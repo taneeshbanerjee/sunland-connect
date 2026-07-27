@@ -100,7 +100,7 @@ function AuthPage() {
     }
 
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       options: {
@@ -112,15 +112,28 @@ function AuthPage() {
         },
       },
     });
-    setBusy(false);
     if (error) {
+      setBusy(false);
       toast.error("Sign up failed", { description: error.message });
       return;
     }
-    toast.success("Account created", {
-      description: "You can sign in now. Check your inbox if confirmation is required.",
-    });
+
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: parsed.data.email,
+        password: parsed.data.password,
+      });
+      if (signInError) {
+        setBusy(false);
+        toast.error("Account created", { description: "Please sign in to continue." });
+        return;
+      }
+    }
+    setBusy(false);
+    toast.success("Welcome to Sunland Residency");
+    navigate({ to: "/dashboard", replace: true });
   }
+
 
   if (checking) {
     return (
