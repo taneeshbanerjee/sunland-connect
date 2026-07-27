@@ -299,7 +299,15 @@ function AuthPage() {
                   {busy ? <Loader2 className="size-4 animate-spin" /> : <Lock className="size-4" />}
                   Sign in securely
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setMode("forgot")}
+                  className="w-full text-center text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
               </form>
+
             </TabsContent>
 
             <TabsContent value="signup">
