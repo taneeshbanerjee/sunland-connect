@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { type AppRole, isCommittee, isElevated } from "@/lib/roles";
+import { ensureAccount } from "@/lib/account.functions";
+
 
 export function useSupabaseSession() {
   const [session, setSession] = useState<Session | null>(null);
