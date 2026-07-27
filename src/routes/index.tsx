@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Building2, Lock, ShieldCheck, Loader2 } from "lucide-react";
+import { Building2, Lock, ShieldCheck, Loader2, MailQuestion, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { authErrorMessage } from "@/lib/auth-errors";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -24,6 +25,8 @@ export const Route = createFileRoute("/")({
         content:
           "Sign in to check your maintenance status, pending submissions and society announcements.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: AuthPage,
@@ -33,6 +36,8 @@ function AuthPage() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"auth" | "forgot">("auth");
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,7 +62,7 @@ function AuthPage() {
     const parsed = z
       .object({
         email: z.string().trim().email("Enter a valid email address").max(255),
-        password: z.string().min(6, "Password must be at least 6 characters").max(128),
+        password: z.string().min(1, "Enter your password").max(128),
       })
       .safeParse({ email, password });
     if (!parsed.success) {
@@ -66,15 +71,17 @@ function AuthPage() {
     }
 
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
     });
     setBusy(false);
-    if (error) {
-      toast.error("Sign in failed", { description: error.message });
+    if (error || !data.session) {
+      const msg = authErrorMessage(error ?? { message: "No session returned" });
+      toast.error(msg.title, { description: msg.description });
       return;
     }
+    toast.success("Signed in");
     navigate({ to: "/dashboard", replace: true });
   }
 
@@ -114,26 +121,48 @@ function AuthPage() {
     });
     if (error) {
       setBusy(false);
-      toast.error("Sign up failed", { description: error.message });
+      const msg = authErrorMessage(error);
+      toast.error(msg.title, { description: msg.description });
       return;
     }
 
-    if (!data.session) {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: parsed.data.email,
-        password: parsed.data.password,
-      });
-      if (signInError) {
-        setBusy(false);
-        toast.error("Account created", { description: "Please sign in to continue." });
-        return;
-      }
-    }
+    // Always establish a fresh session for the new account.
+    const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
     setBusy(false);
+    if (signInError || !signedIn.session) {
+      toast.success("Account created", {
+        description: "Please sign in with your new details to continue.",
+      });
+      return;
+    }
+    void data;
     toast.success("Welcome to Sunland Residency");
     navigate({ to: "/dashboard", replace: true });
   }
 
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = z.string().trim().email("Enter a valid email address").max(255).safeParse(email);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0].message);
+      return;
+    }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) {
+      const msg = authErrorMessage(error);
+      toast.error(msg.title, { description: msg.description });
+      return;
+    }
+    setSentTo(parsed.data);
+    toast.success("Reset link sent", { description: "Check your inbox and spam folder." });
+  }
 
   if (checking) {
     return (
@@ -142,6 +171,7 @@ function AuthPage() {
       </div>
     );
   }
+
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12">
