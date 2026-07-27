@@ -35,6 +35,11 @@ export function useMe() {
     queryKey: ["me", user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
+      try {
+        await ensureAccount();
+      } catch {
+        // non-fatal: profile/role bootstrap will retry on next load
+      }
       const [{ data: profile }, { data: roleRows }] = await Promise.all([
         supabase
           .from("profiles")
@@ -43,6 +48,7 @@ export function useMe() {
           .maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user!.id),
       ]);
+
       const roles = (roleRows ?? []).map((r) => r.role as AppRole);
       return { profile, roles };
     },
