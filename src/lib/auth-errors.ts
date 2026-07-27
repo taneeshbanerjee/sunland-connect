@@ -45,6 +45,13 @@ export function authErrorMessage(error: unknown): { title: string; description: 
       description: "This email is already registered — sign in instead.",
     };
   }
+  if (code === "weak_password" || raw.includes("known to be weak") || raw.includes("pwned")) {
+    return {
+      title: "Password too weak",
+      description:
+        "That password has appeared in known data breaches. Please choose a longer, unique password.",
+    };
+  }
   if (raw.includes("password") && raw.includes("should be")) {
     return { title: "Weak password", description: err.message ?? "Choose a stronger password." };
   }
