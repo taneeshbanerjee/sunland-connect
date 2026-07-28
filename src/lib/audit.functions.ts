@@ -10,7 +10,7 @@ export type AuditRow = {
   action: string;
   category: string;
   target_email: string | null;
-  details: Record<string, unknown>;
+  details: Record<string, string | number | boolean | null>;
   success: boolean;
   created_at: string;
 };
@@ -35,7 +35,7 @@ export async function writeAudit(entry: {
   category: AuditCategory;
   targetId?: string | null;
   targetEmail?: string | null;
-  details?: Record<string, unknown>;
+  details?: Record<string, string | number | boolean | null>;
   success?: boolean;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -46,7 +46,7 @@ export async function writeAudit(entry: {
     category: entry.category,
     target_id: entry.targetId ?? null,
     target_email: entry.targetEmail ?? null,
-    details: entry.details ?? {},
+    details: (entry.details ?? {}) as never,
     success: entry.success ?? true,
   });
 }
