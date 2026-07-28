@@ -32,6 +32,9 @@ import {
 import { useMe } from "@/lib/use-me";
 import { ROLE_LABEL, ROLE_BLURB, type AppRole } from "@/lib/roles";
 import { assignRole, revokeRole, listCommittee } from "@/lib/admin.functions";
+import { AuditTrail } from "@/components/AuditTrail";
+import { IncidentBoard } from "@/components/IncidentBoard";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -86,6 +89,8 @@ function AdminPage() {
           <TabsTrigger value="dues">Maintenance</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
           {me.superAdmin && <TabsTrigger value="roles">Admin roles</TabsTrigger>}
+          {me.elevated && <TabsTrigger value="audit">Audit trail</TabsTrigger>}
+          {me.elevated && <TabsTrigger value="incidents">Monitoring</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="residents" className="mt-6">
@@ -102,7 +107,18 @@ function AdminPage() {
             <RolesPanel />
           </TabsContent>
         )}
+        {me.elevated && (
+          <TabsContent value="audit" className="mt-6">
+            <AuditTrail />
+          </TabsContent>
+        )}
+        {me.elevated && (
+          <TabsContent value="incidents" className="mt-6">
+            <IncidentBoard />
+          </TabsContent>
+        )}
       </Tabs>
+
     </div>
   );
 }
