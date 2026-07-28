@@ -47,6 +47,90 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          category: string
+          created_at: string
+          details: Json
+          id: string
+          success: boolean
+          target_email: string | null
+          target_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          category?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          success?: boolean
+          target_email?: string | null
+          target_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          category?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          success?: boolean
+          target_email?: string | null
+          target_id?: string | null
+        }
+        Relationships: []
+      }
+      incident_reports: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          route: string | null
+          severity: string
+          source: string
+          stack: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          route?: string | null
+          severity?: string
+          source?: string
+          stack?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          route?: string | null
+          severity?: string
+          source?: string
+          stack?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       maintenance_dues: {
         Row: {
           amount: number

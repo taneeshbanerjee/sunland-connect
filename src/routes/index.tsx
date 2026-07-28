@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { recordLoginAttempt } from "@/lib/audit.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -77,10 +78,18 @@ function AuthPage() {
     });
     setBusy(false);
     if (error || !data.session) {
+      void recordLoginAttempt({
+        data: {
+          email: parsed.data.email,
+          success: false,
+          reason: (error?.message ?? "No session returned").slice(0, 200),
+        },
+      }).catch(() => {});
       const msg = authErrorMessage(error ?? { message: "No session returned" });
       toast.error(msg.title, { description: msg.description });
       return;
     }
+    void recordLoginAttempt({ data: { email: parsed.data.email, success: true } }).catch(() => {});
     toast.success("Signed in");
     navigate({ to: "/dashboard", replace: true });
   }

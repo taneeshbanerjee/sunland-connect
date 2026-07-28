@@ -37,25 +37,90 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+
 
   useEffect(() => {
     let active = true;
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setValid(true);
         setReady(true);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
+
+    async function establish() {
+      const url = new URL(window.location.href);
+      const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+
+      const errorDescription =
+        hash.get("error_description") ?? url.searchParams.get("error_description");
+      if (errorDescription) {
+        setLinkError(errorDescription);
+        setValid(false);
+        setReady(true);
+        return;
+      }
+
+      // 1. Implicit flow: tokens arrive in the URL fragment.
+      const accessToken = hash.get("access_token");
+      const refreshToken = hash.get("refresh_token");
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        window.history.replaceState({}, "", url.pathname);
+        if (!active) return;
+        setValid(!error);
+        if (error) setLinkError(error.message);
+        setReady(true);
+        return;
+      }
+
+      // 2. PKCE flow: ?code=...
+      const code = url.searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        window.history.replaceState({}, "", url.pathname);
+        if (!active) return;
+        setValid(!error);
+        if (error) setLinkError(error.message);
+        setReady(true);
+        return;
+      }
+
+      // 3. Token-hash flow: ?token_hash=...&type=recovery
+      const tokenHash = url.searchParams.get("token_hash") ?? url.searchParams.get("token");
+      if (tokenHash) {
+        const { error } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+        window.history.replaceState({}, "", url.pathname);
+        if (!active) return;
+        setValid(!error);
+        if (error) setLinkError(error.message);
+        setReady(true);
+        return;
+      }
+
+      // 4. Already-established recovery session.
+      const { data } = await supabase.auth.getSession();
       if (!active) return;
       setValid(!!data.session);
       setReady(true);
-    });
+    }
+
+    void establish();
+
     return () => {
       active = false;
       sub.subscription.unsubscribe();
     };
   }, []);
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,7 +176,8 @@ function ResetPasswordPage() {
         {!valid ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This reset link is invalid or has expired. Request a fresh link from the sign-in page.
+              {linkError ?? "This reset link is invalid or has expired."} Request a fresh link
+              from the sign-in page.
             </p>
             <Button variant="hero" className="w-full" onClick={() => navigate({ to: "/" })}>
               Back to sign in
