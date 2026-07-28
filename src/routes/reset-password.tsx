@@ -176,7 +176,8 @@ function ResetPasswordPage() {
         {!valid ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This reset link is invalid or has expired. Request a fresh link from the sign-in page.
+              {linkError ?? "This reset link is invalid or has expired."} Request a fresh link
+              from the sign-in page.
             </p>
             <Button variant="hero" className="w-full" onClick={() => navigate({ to: "/" })}>
               Back to sign in
