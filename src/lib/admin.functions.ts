@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { writeAudit } from "@/lib/audit.functions";
 
 export type ManagedRole = "president" | "board_member" | "resident";
 
@@ -74,6 +75,16 @@ export const assignRole = createServerFn({ method: "POST" })
       .upsert({ user_id: profile.id, role: data.role }, { onConflict: "user_id,role" });
     if (error) throw new Error(error.message);
 
+    await writeAudit({
+      actorId: context.userId,
+      actorEmail: (context.claims as { email?: string } | undefined)?.email ?? null,
+      action: "role_granted",
+      category: "role",
+      targetId: profile.id,
+      targetEmail: profile.email,
+      details: { role: data.role },
+    });
+
     return { ok: true };
   });
 
@@ -101,6 +112,15 @@ export const revokeRole = createServerFn({ method: "POST" })
       .eq("user_id", data.userId)
       .eq("role", data.role);
     if (error) throw new Error(error.message);
+
+    await writeAudit({
+      actorId: context.userId,
+      actorEmail: (context.claims as { email?: string } | undefined)?.email ?? null,
+      action: "role_revoked",
+      category: "role",
+      targetId: data.userId,
+      details: { role: data.role },
+    });
 
     return { ok: true };
   });
