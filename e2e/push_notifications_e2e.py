@@ -22,10 +22,10 @@ def publish_announcement(title, body, author_id):
     req = urllib.request.Request(
         f"{SB_URL}/rest/v1/announcements",
         data=json.dumps({
-            "title": title, "body": body, "importance": "critical",
+            "title": title, "body": body, "importance": "urgent",
             "author_id": author_id, "author_name": "E2E Test",
         }).encode(),
-        headers={"apikey": SB_KEY, "Authorization": f"Bearer {SB_KEY}",
+        headers={"apikey": SB_KEY, 
                  "Content-Type": "application/json", "Prefer": "return=representation"},
         method="POST")
     with urllib.request.urlopen(req) as r:
