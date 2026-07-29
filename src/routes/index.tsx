@@ -222,57 +222,8 @@ function AuthPage() {
             </div>
           </div>
 
-          {mode === "forgot" ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <MailQuestion className="size-4 text-primary" />
-                Reset your password
-              </div>
-              {sentTo ? (
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  If an account exists for <span className="text-foreground">{sentTo}</span>, a
-                  password reset link is on its way. The link opens a page where you can choose a
-                  new password.
-                </p>
-              ) : (
-                <form onSubmit={handleForgot} className="space-y-4">
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Enter your registered email and we'll send you a secure link to set a new
-                    password.
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="fp-email">Email</Label>
-                    <Input
-                      id="fp-email"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" variant="hero" className="w-full" disabled={busy}>
-                    {busy && <Loader2 className="size-4 animate-spin" />}
-                    Send reset link
-                  </Button>
-                </form>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setSentTo(null);
-                  setMode("auth");
-                }}
-              >
-                <ArrowLeft className="size-4" />
-                Back to sign in
-              </Button>
-            </div>
-          ) : (
           <Tabs defaultValue="signin">
+
 
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign in</TabsTrigger>
