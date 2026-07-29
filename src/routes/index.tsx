@@ -310,11 +310,12 @@ function AuthPage() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setMode("forgot")}
+                  onClick={() => navigate({ to: "/forgot-password" })}
                   className="w-full text-center text-xs text-primary hover:underline"
                 >
                   Forgot password?
                 </button>
+
               </form>
 
             </TabsContent>
