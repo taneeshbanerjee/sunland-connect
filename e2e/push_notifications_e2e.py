@@ -9,8 +9,8 @@ import asyncio, json, os, sys, time, urllib.request
 from playwright.async_api import async_playwright
 
 BASE = os.environ.get("BASE_URL", "http://localhost:8080")
-EMAIL = os.environ["E2E_EMAIL"]
-PASSWORD = os.environ["E2E_PASSWORD"]
+EMAIL = os.environ.get("E2E_EMAIL", "mickeybanerjee29@gmail.com")
+PASSWORD = os.environ.get("E2E_PASSWORD", "291013")
 SB_URL = os.environ["SUPABASE_URL"]
 SB_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 

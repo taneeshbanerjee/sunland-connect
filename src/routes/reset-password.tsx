@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ResetSteps } from "@/components/ResetSteps";
 import { authErrorMessage } from "@/lib/auth-errors";
 
 export const Route = createFileRoute("/reset-password")({
@@ -172,6 +173,8 @@ function ResetPasswordPage() {
             <p className="text-xs text-muted-foreground">Sunland Residency portal</p>
           </div>
         </div>
+
+        <ResetSteps current={3} />
 
         {!valid ? (
           <div className="space-y-4">

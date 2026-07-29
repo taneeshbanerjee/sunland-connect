@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Building2, Lock, ShieldCheck, Loader2, MailQuestion, ArrowLeft } from "lucide-react";
+import { Building2, Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,8 +37,6 @@ function AuthPage() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"auth" | "forgot">("auth");
-  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -152,27 +150,6 @@ function AuthPage() {
     navigate({ to: "/dashboard", replace: true });
   }
 
-  async function handleForgot(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = z.string().trim().email("Enter a valid email address").max(255).safeParse(email);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-    setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (error) {
-      const msg = authErrorMessage(error);
-      toast.error(msg.title, { description: msg.description });
-      return;
-    }
-    setSentTo(parsed.data);
-    toast.success("Reset link sent", { description: "Check your inbox and spam folder." });
-  }
-
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -222,57 +199,8 @@ function AuthPage() {
             </div>
           </div>
 
-          {mode === "forgot" ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <MailQuestion className="size-4 text-primary" />
-                Reset your password
-              </div>
-              {sentTo ? (
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  If an account exists for <span className="text-foreground">{sentTo}</span>, a
-                  password reset link is on its way. The link opens a page where you can choose a
-                  new password.
-                </p>
-              ) : (
-                <form onSubmit={handleForgot} className="space-y-4">
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Enter your registered email and we'll send you a secure link to set a new
-                    password.
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="fp-email">Email</Label>
-                    <Input
-                      id="fp-email"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" variant="hero" className="w-full" disabled={busy}>
-                    {busy && <Loader2 className="size-4 animate-spin" />}
-                    Send reset link
-                  </Button>
-                </form>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setSentTo(null);
-                  setMode("auth");
-                }}
-              >
-                <ArrowLeft className="size-4" />
-                Back to sign in
-              </Button>
-            </div>
-          ) : (
           <Tabs defaultValue="signin">
+
 
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign in</TabsTrigger>
@@ -310,11 +238,12 @@ function AuthPage() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setMode("forgot")}
+                  onClick={() => navigate({ to: "/forgot-password" })}
                   className="w-full text-center text-xs text-primary hover:underline"
                 >
                   Forgot password?
                 </button>
+
               </form>
 
             </TabsContent>
@@ -383,7 +312,7 @@ function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
-          )}
+
 
         </section>
       </div>
