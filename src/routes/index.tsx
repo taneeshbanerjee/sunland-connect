@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Building2, Lock, ShieldCheck, Loader2, MailQuestion, ArrowLeft } from "lucide-react";
+import { Building2, Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,8 +37,6 @@ function AuthPage() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"auth" | "forgot">("auth");
-  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -150,27 +148,6 @@ function AuthPage() {
     void data;
     toast.success("Welcome to Sunland Residency");
     navigate({ to: "/dashboard", replace: true });
-  }
-
-  async function handleForgot(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = z.string().trim().email("Enter a valid email address").max(255).safeParse(email);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-    setBusy(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (error) {
-      const msg = authErrorMessage(error);
-      toast.error(msg.title, { description: msg.description });
-      return;
-    }
-    setSentTo(parsed.data);
-    toast.success("Reset link sent", { description: "Check your inbox and spam folder." });
   }
 
   if (checking) {
