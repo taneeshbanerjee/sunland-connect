@@ -22,32 +22,34 @@ export function IncidentBoard() {
   const fetchIncidents = useServerFn(listIncidents);
   const setResolved = useServerFn(resolveIncident);
 
+  // Incidents contain emails and stack traces, so they are never broadcast over
+  // the realtime channel — the board polls through the role-checked server fn.
   const { data, isLoading } = useQuery({
     queryKey: ["incidents"],
     queryFn: () => fetchIncidents({ data: undefined as never }),
-    refetchInterval: 20_000,
+    refetchInterval: 15_000,
   });
 
-  // Live alerting: a new incident row raises a toast immediately.
+  // Alert on newly seen unresolved incidents from polled data.
+  const seen = useRef<Set<string>>(new Set());
+  const firstLoad = useRef(true);
   useEffect(() => {
-    const channel = supabase
-      .channel("incidents-live")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "incident_reports" },
-        (payload) => {
-          const row = payload.new as { message?: string; severity?: string };
-          toast.error(`New ${row.severity ?? "error"} incident`, {
-            description: (row.message ?? "").slice(0, 160),
-          });
-          void qc.invalidateQueries({ queryKey: ["incidents"] });
-        },
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [qc]);
+    if (!data) return;
+    const openIds = data.filter((i) => !i.resolved);
+    if (firstLoad.current) {
+      openIds.forEach((i) => seen.current.add(i.id));
+      firstLoad.current = false;
+      return;
+    }
+    for (const incident of openIds) {
+      if (seen.current.has(incident.id)) continue;
+      seen.current.add(incident.id);
+      toast.error(`New ${incident.severity ?? "error"} incident`, {
+        description: (incident.message ?? "").slice(0, 160),
+      });
+    }
+  }, [data]);
+
 
   const open = (data ?? []).filter((i) => !i.resolved);
 
