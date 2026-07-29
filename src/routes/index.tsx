@@ -335,7 +335,7 @@ function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
-          )}
+
 
         </section>
       </div>
