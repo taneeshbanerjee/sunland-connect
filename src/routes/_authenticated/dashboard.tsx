@@ -237,7 +237,54 @@ function Dashboard() {
         </Card>
       </div>
 
+      <Card id="receipts" className="panel scroll-mt-24 border-0 bg-transparent">
+        <CardHeader>
+          <CardTitle className="text-base">Receipts from the committee</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {receipts.isLoading && <Skeleton className="h-16 w-full" />}
+          {!receipts.isLoading && (receipts.data?.length ?? 0) === 0 && (
+            <p className="text-sm text-muted-foreground">No receipts have been sent to you yet.</p>
+          )}
+          {(receipts.data ?? []).map((r) => (
+            <div
+              key={r.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-accent/25 px-4 py-3"
+            >
+              <div>
+                <p className="text-sm font-medium">
+                  {r.title}
+                  {!r.acknowledged && (
+                    <Badge variant="secondary" className="ml-2">
+                      new
+                    </Badge>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {money(Number(r.amount))}
+                  {r.period ? ` · ${r.period}` : ""} · {new Date(r.created_at).toLocaleDateString()}
+                </p>
+                {r.note && <p className="mt-1 text-xs text-muted-foreground">{r.note}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                {r.file_path && (
+                  <Button variant="ghost" size="sm" onClick={() => openFile(r.id)}>
+                    View file
+                  </Button>
+                )}
+                {!r.acknowledged && (
+                  <Button variant="hero" size="sm" onClick={() => acknowledge(r.id)}>
+                    Mark as received
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card className="panel border-0 bg-transparent">
+
         <CardHeader>
           <CardTitle className="text-base">Latest announcements</CardTitle>
         </CardHeader>
