@@ -43,5 +43,5 @@ export const ensureAccount = createServerFn({ method: "POST" })
       .from("user_roles")
       .upsert(roles, { onConflict: "user_id,role", ignoreDuplicates: true });
 
-    return { ok: true };
+    return { ok: true, sessionExpired: false };
   });
