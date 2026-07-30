@@ -45,7 +45,9 @@ export function useMe() {
       const [{ data: profile }, { data: roleRows }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, flat_no, phone, email")
+          .select(
+            "id, full_name, flat_no, phone, email, hide_flat_no, notify_announcements, mfa_enrolled",
+          )
           .eq("id", user!.id)
           .maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user!.id),
@@ -65,7 +67,9 @@ export function useMe() {
     roles,
     committee: isCommittee(roles),
     elevated: isElevated(roles),
+    supreme: isSupreme(roles),
     superAdmin: roles.includes("super_admin"),
     refetch: query.refetch,
   };
 }
+
