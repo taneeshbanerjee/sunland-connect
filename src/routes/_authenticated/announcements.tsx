@@ -234,10 +234,21 @@ function Announcements() {
                 {new Date(a.created_at).toLocaleString()}
               </span>
               {(me.elevated || a.author_id === me.user?.id) && (
-                <Button variant="ghost" size="sm" onClick={() => remove(a.id)}>
-                  Delete
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit announcement: ${a.title}`}
+                    onClick={() => startEdit(a)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => remove(a.id)}>
+                    Delete
+                  </Button>
+                </div>
               )}
+
             </div>
           </article>
         ))}
