@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { type AppRole, isCommittee, isElevated } from "@/lib/roles";
+import { type AppRole, isCommittee, isElevated, isSupreme } from "@/lib/roles";
 import { ensureAccount } from "@/lib/account.functions";
 
 
