@@ -1,11 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, AlertCircle, Wallet, FileText, Bell } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, AlertCircle, Wallet, FileText, Bell, Receipt } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/lib/use-me";
+import { receiptFileUrl } from "@/lib/receipts.functions";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
