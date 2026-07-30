@@ -192,10 +192,18 @@ function Announcements() {
                   placeholder="Share the details residents need to know…"
                 />
               </div>
-              <Button type="submit" variant="hero" disabled={busy}>
-                {busy && <Loader2 className="size-4 animate-spin" />}
-                Publish &amp; notify residents
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" variant="hero" disabled={busy}>
+                  {busy && <Loader2 className="size-4 animate-spin" />}
+                  {editingId ? "Save changes" : "Publish & notify residents"}
+                </Button>
+                {editingId && (
+                  <Button type="button" variant="ghost" onClick={resetForm}>
+                    Cancel edit
+                  </Button>
+                )}
+              </div>
+
             </form>
           </CardContent>
         </Card>
