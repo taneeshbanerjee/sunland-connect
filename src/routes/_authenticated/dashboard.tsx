@@ -297,12 +297,16 @@ function StatCard({
   value,
   hint,
   tone,
+  hash,
+  to,
 }: {
   icon: typeof Wallet;
   label: string;
   value: string | null;
   hint: string;
   tone: "success" | "warning" | "primary";
+  hash?: string;
+  to?: string;
 }) {
   const toneClass =
     tone === "success"
@@ -310,8 +314,9 @@ function StatCard({
       : tone === "warning"
         ? "text-warning bg-warning/15"
         : "text-primary bg-primary/15";
-  return (
-    <div className="panel p-5">
+
+  const inner = (
+    <>
       <div className="flex items-center justify-between">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
         <span className={`flex size-8 items-center justify-center rounded-lg ${toneClass}`}>
@@ -324,6 +329,28 @@ function StatCard({
         <p className="mt-3 text-2xl font-semibold">{value}</p>
       )}
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-    </div>
+    </>
   );
+
+  const className =
+    "panel block p-5 text-left transition-colors hover:border-primary/50 hover:bg-accent/30";
+
+  if (to === "/announcements") {
+    return (
+      <Link to="/announcements" className={className}>
+        {inner}
+      </Link>
+    );
+  }
+
+  if (hash) {
+    return (
+      <a href={`#${hash}`} className={className}>
+        {inner}
+      </a>
+    );
+  }
+
+  return <div className="panel p-5">{inner}</div>;
 }
+
