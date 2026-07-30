@@ -112,4 +112,3 @@ export const touchSession = createServerFn({ method: "POST" })
     return { expired: false, exempt };
   });
 
-export type { AdminClient };
