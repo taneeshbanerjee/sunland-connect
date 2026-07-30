@@ -17,11 +17,12 @@ async function myRoles(context: { supabase: any; userId: string }): Promise<stri
 export const listCommittee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const roles = await myRoles(context);
-    const allowed = roles.some(
+    const callerRoles = await myRoles(context);
+    const allowed = callerRoles.some(
       (r) => r === "super_admin" || r === "president" || r === "board_member",
     );
     if (!allowed) throw new Error("Forbidden");
+
 
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
