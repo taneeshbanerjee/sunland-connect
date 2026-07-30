@@ -47,6 +47,7 @@ function Announcements() {
   const [body, setBody] = useState("");
   const [importance, setImportance] = useState("normal");
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ["announcements"],
@@ -59,6 +60,21 @@ function Announcements() {
       return data;
     },
   });
+
+  function resetForm() {
+    setTitle("");
+    setBody("");
+    setImportance("normal");
+    setEditingId(null);
+  }
+
+  function startEdit(a: { id: string; title: string; body: string; importance: string }) {
+    setEditingId(a.id);
+    setTitle(a.title);
+    setBody(a.body);
+    setImportance(a.importance);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function publish(e: React.FormEvent) {
     e.preventDefault();
@@ -74,24 +90,35 @@ function Announcements() {
     }
 
     setBusy(true);
-    const { error } = await supabase.from("announcements").insert({
-      title: parsed.data.title,
-      body: parsed.data.body,
-      importance,
-      author_id: me.user!.id,
-      author_name: me.profile?.full_name || me.user?.email,
-      author_role: highestRole(me.roles),
-    });
+    const error = editingId
+      ? (
+          await supabase
+            .from("announcements")
+            .update({ title: parsed.data.title, body: parsed.data.body, importance })
+            .eq("id", editingId)
+        ).error
+      : (
+          await supabase.from("announcements").insert({
+            title: parsed.data.title,
+            body: parsed.data.body,
+            importance,
+            author_id: me.user!.id,
+            author_name: me.profile?.full_name || me.user?.email,
+            author_role: highestRole(me.roles),
+          })
+        ).error;
     setBusy(false);
 
     if (error) {
-      toast.error("Could not publish", { description: error.message });
+      toast.error(editingId ? "Could not update" : "Could not publish", {
+        description: error.message,
+      });
       return;
     }
-    setTitle("");
-    setBody("");
-    setImportance("normal");
-    toast.success("Announcement published to all residents");
+    toast.success(
+      editingId ? "Announcement updated" : "Announcement published to all residents",
+    );
+    resetForm();
     void queryClient.invalidateQueries({ queryKey: ["announcements"] });
     void queryClient.invalidateQueries({ queryKey: ["announcements-recent"] });
   }
@@ -102,9 +129,12 @@ function Announcements() {
       toast.error("Could not delete", { description: error.message });
       return;
     }
+    if (editingId === id) resetForm();
     toast.success("Announcement removed");
     void queryClient.invalidateQueries({ queryKey: ["announcements"] });
+    void queryClient.invalidateQueries({ queryKey: ["announcements-recent"] });
   }
+
 
   return (
     <div className="space-y-8">
