@@ -36,7 +36,9 @@ function money(n: number) {
 
 function Dashboard() {
   const me = useMe();
+  const queryClient = useQueryClient();
   const userId = me.user?.id;
+
 
   const dues = useQuery({
     queryKey: ["my-dues", userId],
