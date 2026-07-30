@@ -21,7 +21,7 @@ async function adminClient() {
   return supabaseAdmin;
 }
 
-async function rolesOf(context: { supabase: any; userId: string }) {
+async function rolesOf(context: { supabase: any; userId: string }): Promise<string[]> {
   const { data } = await context.supabase
     .from("user_roles")
     .select("role")
