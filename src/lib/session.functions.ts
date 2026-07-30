@@ -8,10 +8,6 @@ export const SESSION_IDLE_MS = 30 * 60 * 1000;
 /** Roles that are never force-expired. */
 const EXEMPT_ROLES = ["super_admin"];
 
-type AdminClient = Awaited<
-  ReturnType<typeof import("@/integrations/supabase/client.server").default>
->;
-
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
