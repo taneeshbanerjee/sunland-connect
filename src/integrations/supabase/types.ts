@@ -179,7 +179,10 @@ export type Database = {
           email: string | null
           flat_no: string | null
           full_name: string
+          hide_flat_no: boolean
           id: string
+          mfa_enrolled: boolean
+          notify_announcements: boolean
           phone: string | null
           updated_at: string
         }
@@ -188,7 +191,10 @@ export type Database = {
           email?: string | null
           flat_no?: string | null
           full_name?: string
+          hide_flat_no?: boolean
           id: string
+          mfa_enrolled?: boolean
+          notify_announcements?: boolean
           phone?: string | null
           updated_at?: string
         }
@@ -197,9 +203,84 @@ export type Database = {
           email?: string | null
           flat_no?: string | null
           full_name?: string
+          hide_flat_no?: boolean
           id?: string
+          mfa_enrolled?: boolean
+          notify_announcements?: boolean
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      receipts: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          amount: number
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_path: string | null
+          id: string
+          note: string | null
+          period: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          note?: string | null
+          period?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          note?: string | null
+          period?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      session_activity: {
+        Row: {
+          created_at: string
+          expired_at: string | null
+          last_seen_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expired_at?: string | null
+          last_seen_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expired_at?: string | null
+          last_seen_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -291,13 +372,47 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      residents_directory: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          flat_no: string | null
+          full_name: string | null
+          hide_flat_no: boolean | null
+          id: string | null
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          flat_no?: never
+          full_name?: string | null
+          hide_flat_no?: boolean | null
+          id?: string | null
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          flat_no?: never
+          full_name?: string | null
+          hide_flat_no?: boolean | null
+          id?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
     }
     Enums: {
-      app_role: "super_admin" | "president" | "board_member" | "resident"
+      app_role:
+        | "super_admin"
+        | "president"
+        | "board_member"
+        | "resident"
+        | "treasurer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -425,7 +540,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "president", "board_member", "resident"],
+      app_role: [
+        "super_admin",
+        "president",
+        "board_member",
+        "resident",
+        "treasurer",
+      ],
     },
   },
 } as const
