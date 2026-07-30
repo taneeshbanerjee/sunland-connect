@@ -109,10 +109,8 @@ export const revokeRole = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isSuper } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "super_admin",
-    });
+    const isSuper = (await myRoles(context)).includes("super_admin");
+
     if (!isSuper) throw new Error("Forbidden: only the Super Admin can manage committee roles");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
