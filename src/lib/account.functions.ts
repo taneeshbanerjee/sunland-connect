@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { enforceIdleExpiry } from "@/lib/session.functions";
 
 const OWNER_EMAIL = "mickeybanerjee29@gmail.com";
 
-// Ensures the signed-in user has a profile row and a base role.
+// Ensures the signed-in user has a profile row and a base role, and enforces
+// the backend session-expiry policy (SessionTokenExpiry).
 export const ensureAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -12,6 +14,10 @@ export const ensureAccount = createServerFn({ method: "POST" })
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(context.userId);
     const user = authUser?.user;
     if (!user) throw new Error("User not found");
+
+    const session = await enforceIdleExpiry(context.userId, user.email ?? null);
+    if (session.expired) return { ok: true, sessionExpired: true };
+
 
     const meta = (user.user_metadata ?? {}) as Record<string, string | undefined>;
 
