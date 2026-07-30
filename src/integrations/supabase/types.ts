@@ -372,39 +372,21 @@ export type Database = {
       }
     }
     Views: {
-      residents_directory: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          flat_no: string | null
-          full_name: string | null
-          hide_flat_no: boolean | null
-          id: string | null
-          phone: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          flat_no?: never
-          full_name?: string | null
-          hide_flat_no?: boolean | null
-          id?: string | null
-          phone?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          flat_no?: never
-          full_name?: string | null
-          hide_flat_no?: boolean | null
-          id?: string | null
-          phone?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      residents_directory: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          flat_no: string
+          full_name: string
+          hide_flat_no: boolean
+          id: string
+          phone: string
+        }[]
+      }
     }
     Enums: {
       app_role:
