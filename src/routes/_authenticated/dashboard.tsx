@@ -204,10 +204,11 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="panel border-0 bg-transparent">
+        <Card id="submissions" className="panel scroll-mt-24 border-0 bg-transparent">
           <CardHeader>
             <CardTitle className="text-base">Committee submissions</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-3">
             {submissions.isLoading && <Skeleton className="h-20 w-full" />}
             {!submissions.isLoading && (submissions.data?.length ?? 0) === 0 && (
