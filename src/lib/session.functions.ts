@@ -117,3 +117,30 @@ export const touchSession = createServerFn({ method: "POST" })
   );
 
 
+
+/**
+ * Two-factor gate. Elevated roles that have enrolled TOTP must present an
+ * aal2 session before any privileged server action is allowed.
+ */
+export async function assertStrongAuth(context: {
+  supabase: any;
+  userId: string;
+  claims: Record<string, unknown>;
+}) {
+  const db = await admin();
+  const roles = await rolesOf(db, context.userId);
+  const elevated = roles.some((r) =>
+    ["super_admin", "treasurer", "president", "board_member"].includes(r),
+  );
+  if (!elevated) return;
+
+  const { data: profile } = await db
+    .from("profiles")
+    .select("mfa_enrolled")
+    .eq("id", context.userId)
+    .maybeSingle();
+
+  if (profile?.mfa_enrolled && context.claims?.aal !== "aal2") {
+    throw new Error("Two-factor verification required. Sign in again and enter your code.");
+  }
+}
