@@ -74,41 +74,46 @@ export async function sweepExpiredSessions() {
 
 /**
  * Records activity for the signed-in user and enforces the idle window.
- * Called from the server on every authenticated bootstrap — no frontend timer.
+ * Runs entirely on the server — there is no frontend timer.
  */
+export async function enforceIdleExpiry(userId: string, email: string | null) {
+  const db = await admin();
+  const roles = await rolesOf(db, userId);
+  const exempt = roles.some((r) => EXEMPT_ROLES.includes(r));
+
+  const { data: existing } = await db
+    .from("session_activity")
+    .select("last_seen_at, expired_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!exempt && existing?.last_seen_at) {
+    const idleFor = Date.now() - new Date(existing.last_seen_at).getTime();
+    if (idleFor > SESSION_IDLE_MS) {
+      await revoke(db, userId, email, "idle_timeout");
+      await sweepExpiredSessions();
+      return { expired: true, exempt: false };
+    }
+  }
+
+  await db
+    .from("session_activity")
+    .upsert(
+      { user_id: userId, last_seen_at: new Date().toISOString(), expired_at: null },
+      { onConflict: "user_id" },
+    );
+
+  await sweepExpiredSessions();
+  return { expired: false, exempt };
+}
+
 export const touchSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const db = await admin();
-    const userId = context.userId;
-    const email = (context.claims as { email?: string } | undefined)?.email ?? null;
-    const roles = await rolesOf(db, userId);
-    const exempt = roles.some((r) => EXEMPT_ROLES.includes(r));
+  .handler(async ({ context }) =>
+    enforceIdleExpiry(
+      context.userId,
+      (context.claims as { email?: string } | undefined)?.email ?? null,
+    ),
+  );
 
-    const { data: existing } = await db
-      .from("session_activity")
-      .select("last_seen_at, expired_at")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (!exempt && existing?.last_seen_at) {
-      const idleFor = Date.now() - new Date(existing.last_seen_at).getTime();
-      if (idleFor > SESSION_IDLE_MS) {
-        await revoke(db, userId, email, "idle_timeout");
-        // Sweep other abandoned sessions while we are here.
-        void sweepExpiredSessions();
-        return { expired: true, exempt: false };
-      }
-    }
-
-    await db
-      .from("session_activity")
-      .upsert(
-        { user_id: userId, last_seen_at: new Date().toISOString(), expired_at: null },
-        { onConflict: "user_id" },
-      );
-
-    void sweepExpiredSessions();
-    return { expired: false, exempt };
-  });
 
