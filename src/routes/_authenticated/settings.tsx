@@ -47,7 +47,7 @@ function SettingsPage() {
 
   if (!me.ready) return <Skeleton className="h-64 w-full" />;
 
-  async function update(patch: Record<string, boolean>) {
+  async function update(patch: { hide_flat_no?: boolean; notify_announcements?: boolean }) {
     setSaving(true);
     const { error } = await supabase.from("profiles").update(patch).eq("id", me.user!.id);
     setSaving(false);
