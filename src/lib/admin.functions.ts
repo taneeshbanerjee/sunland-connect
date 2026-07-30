@@ -5,13 +5,24 @@ import { writeAudit } from "@/lib/audit.functions";
 
 export type ManagedRole = "president" | "board_member" | "resident";
 
+/** Reads the caller's own roles through RLS (own rows are always visible). */
+async function myRoles(context: { supabase: any; userId: string }): Promise<string[]> {
+  const { data } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId);
+  return (data ?? []).map((r: { role: string }) => r.role as string);
+}
+
 export const listCommittee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: allowed } = await context.supabase.rpc("is_committee", {
-      _user_id: context.userId,
-    });
+    const roles = await myRoles(context);
+    const allowed = roles.some(
+      (r) => r === "super_admin" || r === "president" || r === "board_member",
+    );
     if (!allowed) throw new Error("Forbidden");
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: roles, error } = await supabaseAdmin
