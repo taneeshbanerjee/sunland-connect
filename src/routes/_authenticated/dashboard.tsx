@@ -174,10 +174,11 @@ function Dashboard() {
 
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="panel border-0 bg-transparent">
+        <Card id="maintenance" className="panel scroll-mt-24 border-0 bg-transparent">
           <CardHeader>
             <CardTitle className="text-base">Maintenance ledger</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-3">
             {dues.isLoading && <Skeleton className="h-20 w-full" />}
             {!dues.isLoading && (dues.data?.length ?? 0) === 0 && (
