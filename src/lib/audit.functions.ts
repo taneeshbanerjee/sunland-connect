@@ -101,11 +101,15 @@ export const reportIncident = createServerFn({ method: "POST" })
   });
 
 async function assertElevated(context: { supabase: any; userId: string }) {
-  const { data: allowed } = await context.supabase.rpc("is_elevated", {
-    _user_id: context.userId,
-  });
+  const { data: rows } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId);
+  const roles = (rows ?? []).map((r: { role: string }) => r.role);
+  const allowed = roles.some((r: string) => r === "super_admin" || r === "president");
   if (!allowed) throw new Error("Forbidden");
 }
+
 
 export const listAuditLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
