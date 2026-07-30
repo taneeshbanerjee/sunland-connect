@@ -150,8 +150,9 @@ function Announcements() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Megaphone className="size-4 text-primary" />
-              Publish a new announcement
+              {editingId ? "Edit announcement" : "Publish a new announcement"}
             </CardTitle>
+
           </CardHeader>
           <CardContent>
             <form onSubmit={publish} className="space-y-4">
