@@ -84,9 +84,46 @@ function Dashboard() {
     },
   });
 
+  const receipts = useQuery({
+    queryKey: ["my-receipts", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("receipts")
+        .select("*")
+        .eq("user_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const pendingDues = (dues.data ?? []).filter((d) => d.status !== "paid");
   const outstanding = pendingDues.reduce((sum, d) => sum + Number(d.amount ?? 0), 0);
   const pendingSubs = (submissions.data ?? []).filter((s) => !s.done);
+  const newReceipts = (receipts.data ?? []).filter((r) => !r.acknowledged);
+
+  async function acknowledge(id: string) {
+    const { error } = await supabase.from("receipts").update({ acknowledged: true }).eq("id", id);
+    if (error) {
+      toast.error("Could not update", { description: error.message });
+      return;
+    }
+    toast.success("Receipt marked as received");
+    void queryClient.invalidateQueries({ queryKey: ["my-receipts", userId] });
+  }
+
+  async function openFile(id: string) {
+    try {
+      const res = await receiptFileUrl({ data: { receiptId: id } });
+      if (res?.url) window.open(res.url, "_blank", "noopener");
+      else toast("No file attached to this receipt");
+    } catch (err) {
+      toast.error("Could not open the receipt", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -100,13 +137,14 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           icon={Wallet}
           label="Maintenance outstanding"
           value={dues.isLoading ? null : money(outstanding)}
           tone={outstanding > 0 ? "warning" : "success"}
           hint={outstanding > 0 ? `${pendingDues.length} unpaid period(s)` : "All cleared"}
+          hash="maintenance"
         />
         <StatCard
           icon={FileText}
@@ -114,6 +152,15 @@ function Dashboard() {
           value={submissions.isLoading ? null : String(pendingSubs.length)}
           tone={pendingSubs.length > 0 ? "warning" : "success"}
           hint={pendingSubs.length > 0 ? "Action needed from you" : "Nothing pending"}
+          hash="submissions"
+        />
+        <StatCard
+          icon={Receipt}
+          label="Receipts"
+          value={receipts.isLoading ? null : String(receipts.data?.length ?? 0)}
+          tone={newReceipts.length > 0 ? "warning" : "primary"}
+          hint={newReceipts.length > 0 ? `${newReceipts.length} new for you` : "Nothing new"}
+          hash="receipts"
         />
         <StatCard
           icon={Bell}
@@ -121,8 +168,10 @@ function Dashboard() {
           value={announcements.isLoading ? null : String(announcements.data?.length ?? 0)}
           tone="primary"
           hint="Recent notices from the committee"
+          to="/announcements"
         />
       </div>
+
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="panel border-0 bg-transparent">
