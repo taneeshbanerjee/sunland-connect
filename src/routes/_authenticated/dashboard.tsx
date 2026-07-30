@@ -1,11 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, AlertCircle, Wallet, FileText, Bell } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, AlertCircle, Wallet, FileText, Bell, Receipt } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/lib/use-me";
+import { receiptFileUrl } from "@/lib/receipts.functions";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -32,7 +36,9 @@ function money(n: number) {
 
 function Dashboard() {
   const me = useMe();
+  const queryClient = useQueryClient();
   const userId = me.user?.id;
+
 
   const dues = useQuery({
     queryKey: ["my-dues", userId],
@@ -78,9 +84,46 @@ function Dashboard() {
     },
   });
 
+  const receipts = useQuery({
+    queryKey: ["my-receipts", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("receipts")
+        .select("*")
+        .eq("user_id", userId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const pendingDues = (dues.data ?? []).filter((d) => d.status !== "paid");
   const outstanding = pendingDues.reduce((sum, d) => sum + Number(d.amount ?? 0), 0);
   const pendingSubs = (submissions.data ?? []).filter((s) => !s.done);
+  const newReceipts = (receipts.data ?? []).filter((r) => !r.acknowledged);
+
+  async function acknowledge(id: string) {
+    const { error } = await supabase.from("receipts").update({ acknowledged: true }).eq("id", id);
+    if (error) {
+      toast.error("Could not update", { description: error.message });
+      return;
+    }
+    toast.success("Receipt marked as received");
+    void queryClient.invalidateQueries({ queryKey: ["my-receipts", userId] });
+  }
+
+  async function openFile(id: string) {
+    try {
+      const res = await receiptFileUrl({ data: { receiptId: id } });
+      if (res?.url) window.open(res.url, "_blank", "noopener");
+      else toast("No file attached to this receipt");
+    } catch (err) {
+      toast.error("Could not open the receipt", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -94,13 +137,14 @@ function Dashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           icon={Wallet}
           label="Maintenance outstanding"
           value={dues.isLoading ? null : money(outstanding)}
           tone={outstanding > 0 ? "warning" : "success"}
           hint={outstanding > 0 ? `${pendingDues.length} unpaid period(s)` : "All cleared"}
+          hash="maintenance"
         />
         <StatCard
           icon={FileText}
@@ -108,6 +152,15 @@ function Dashboard() {
           value={submissions.isLoading ? null : String(pendingSubs.length)}
           tone={pendingSubs.length > 0 ? "warning" : "success"}
           hint={pendingSubs.length > 0 ? "Action needed from you" : "Nothing pending"}
+          hash="submissions"
+        />
+        <StatCard
+          icon={Receipt}
+          label="Receipts"
+          value={receipts.isLoading ? null : String(receipts.data?.length ?? 0)}
+          tone={newReceipts.length > 0 ? "warning" : "primary"}
+          hint={newReceipts.length > 0 ? `${newReceipts.length} new for you` : "Nothing new"}
+          hash="receipts"
         />
         <StatCard
           icon={Bell}
@@ -115,14 +168,17 @@ function Dashboard() {
           value={announcements.isLoading ? null : String(announcements.data?.length ?? 0)}
           tone="primary"
           hint="Recent notices from the committee"
+          to="/announcements"
         />
       </div>
 
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="panel border-0 bg-transparent">
+        <Card id="maintenance" className="panel scroll-mt-24 border-0 bg-transparent">
           <CardHeader>
             <CardTitle className="text-base">Maintenance ledger</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-3">
             {dues.isLoading && <Skeleton className="h-20 w-full" />}
             {!dues.isLoading && (dues.data?.length ?? 0) === 0 && (
@@ -148,10 +204,11 @@ function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="panel border-0 bg-transparent">
+        <Card id="submissions" className="panel scroll-mt-24 border-0 bg-transparent">
           <CardHeader>
             <CardTitle className="text-base">Committee submissions</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-3">
             {submissions.isLoading && <Skeleton className="h-20 w-full" />}
             {!submissions.isLoading && (submissions.data?.length ?? 0) === 0 && (
@@ -180,7 +237,54 @@ function Dashboard() {
         </Card>
       </div>
 
+      <Card id="receipts" className="panel scroll-mt-24 border-0 bg-transparent">
+        <CardHeader>
+          <CardTitle className="text-base">Receipts from the committee</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {receipts.isLoading && <Skeleton className="h-16 w-full" />}
+          {!receipts.isLoading && (receipts.data?.length ?? 0) === 0 && (
+            <p className="text-sm text-muted-foreground">No receipts have been sent to you yet.</p>
+          )}
+          {(receipts.data ?? []).map((r) => (
+            <div
+              key={r.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 bg-accent/25 px-4 py-3"
+            >
+              <div>
+                <p className="text-sm font-medium">
+                  {r.title}
+                  {!r.acknowledged && (
+                    <Badge variant="secondary" className="ml-2">
+                      new
+                    </Badge>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {money(Number(r.amount))}
+                  {r.period ? ` · ${r.period}` : ""} · {new Date(r.created_at).toLocaleDateString()}
+                </p>
+                {r.note && <p className="mt-1 text-xs text-muted-foreground">{r.note}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                {r.file_path && (
+                  <Button variant="ghost" size="sm" onClick={() => openFile(r.id)}>
+                    View file
+                  </Button>
+                )}
+                {!r.acknowledged && (
+                  <Button variant="hero" size="sm" onClick={() => acknowledge(r.id)}>
+                    Mark as received
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
       <Card className="panel border-0 bg-transparent">
+
         <CardHeader>
           <CardTitle className="text-base">Latest announcements</CardTitle>
         </CardHeader>
@@ -242,12 +346,16 @@ function StatCard({
   value,
   hint,
   tone,
+  hash,
+  to,
 }: {
   icon: typeof Wallet;
   label: string;
   value: string | null;
   hint: string;
   tone: "success" | "warning" | "primary";
+  hash?: string;
+  to?: string;
 }) {
   const toneClass =
     tone === "success"
@@ -255,8 +363,9 @@ function StatCard({
       : tone === "warning"
         ? "text-warning bg-warning/15"
         : "text-primary bg-primary/15";
-  return (
-    <div className="panel p-5">
+
+  const inner = (
+    <>
       <div className="flex items-center justify-between">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
         <span className={`flex size-8 items-center justify-center rounded-lg ${toneClass}`}>
@@ -269,6 +378,28 @@ function StatCard({
         <p className="mt-3 text-2xl font-semibold">{value}</p>
       )}
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-    </div>
+    </>
   );
+
+  const className =
+    "panel block p-5 text-left transition-colors hover:border-primary/50 hover:bg-accent/30";
+
+  if (to === "/announcements") {
+    return (
+      <Link to="/announcements" className={className}>
+        {inner}
+      </Link>
+    );
+  }
+
+  if (hash) {
+    return (
+      <a href={`#${hash}`} className={className}>
+        {inner}
+      </a>
+    );
+  }
+
+  return <div className="panel p-5">{inner}</div>;
 }
+

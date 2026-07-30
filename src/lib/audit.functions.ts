@@ -63,15 +63,65 @@ export const recordLoginAttempt = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
+    const email = data.email.toLowerCase();
     await writeAudit({
-      actorEmail: data.email.toLowerCase(),
+      actorEmail: email,
       action: data.success ? "login_success" : "login_failed",
       category: "auth",
       success: data.success,
       details: data.reason ? { reason: data.reason } : {},
     });
+
+    if (!data.success) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const { count } = await supabaseAdmin
+        .from("audit_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "login_failed")
+        .eq("actor_email", email)
+        .gte("created_at", since);
+
+      const failures = count ?? 0;
+      if (failures >= 5) {
+        // Is this a privileged account? Then it is a critical alert.
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .ilike("email", email)
+          .maybeSingle();
+        let elevated = false;
+        if (profile) {
+          const { data: roles } = await supabaseAdmin
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", profile.id);
+          elevated = (roles ?? []).some((r) =>
+            ["super_admin", "treasurer", "president"].includes(r.role as string),
+          );
+        }
+        await supabaseAdmin.from("incident_reports").insert({
+          message: `${failures} failed sign-in attempts for ${email} in the last 15 minutes${
+            elevated ? " (privileged account)" : ""
+          }`,
+          route: "/",
+          severity: elevated || failures >= 10 ? "critical" : "warning",
+          source: "server",
+          user_email: email,
+        });
+        await writeAudit({
+          actorEmail: email,
+          action: "suspicious_login_activity",
+          category: "auth",
+          success: false,
+          details: { failures, window_minutes: 15, privileged: elevated },
+        });
+      }
+    }
+
     return { ok: true };
   });
+
 
 /** Records a client-side error/incident for the supreme admin console. */
 export const reportIncident = createServerFn({ method: "POST" })

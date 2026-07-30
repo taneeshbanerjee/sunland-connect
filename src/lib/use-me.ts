@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { type AppRole, isCommittee, isElevated } from "@/lib/roles";
+import { type AppRole, isCommittee, isElevated, isSupreme } from "@/lib/roles";
 import { ensureAccount } from "@/lib/account.functions";
 
 
@@ -45,7 +45,9 @@ export function useMe() {
       const [{ data: profile }, { data: roleRows }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, flat_no, phone, email")
+          .select(
+            "id, full_name, flat_no, phone, email, hide_flat_no, notify_announcements, mfa_enrolled",
+          )
           .eq("id", user!.id)
           .maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user!.id),
@@ -65,7 +67,9 @@ export function useMe() {
     roles,
     committee: isCommittee(roles),
     elevated: isElevated(roles),
+    supreme: isSupreme(roles),
     superAdmin: roles.includes("super_admin"),
     refetch: query.refetch,
   };
 }
+

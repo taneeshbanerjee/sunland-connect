@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Megaphone, Loader2 } from "lucide-react";
+import { Megaphone, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ function Announcements() {
   const [body, setBody] = useState("");
   const [importance, setImportance] = useState("normal");
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const list = useQuery({
     queryKey: ["announcements"],
@@ -59,6 +60,21 @@ function Announcements() {
       return data;
     },
   });
+
+  function resetForm() {
+    setTitle("");
+    setBody("");
+    setImportance("normal");
+    setEditingId(null);
+  }
+
+  function startEdit(a: { id: string; title: string; body: string; importance: string }) {
+    setEditingId(a.id);
+    setTitle(a.title);
+    setBody(a.body);
+    setImportance(a.importance);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   async function publish(e: React.FormEvent) {
     e.preventDefault();
@@ -74,24 +90,35 @@ function Announcements() {
     }
 
     setBusy(true);
-    const { error } = await supabase.from("announcements").insert({
-      title: parsed.data.title,
-      body: parsed.data.body,
-      importance,
-      author_id: me.user!.id,
-      author_name: me.profile?.full_name || me.user?.email,
-      author_role: highestRole(me.roles),
-    });
+    const error = editingId
+      ? (
+          await supabase
+            .from("announcements")
+            .update({ title: parsed.data.title, body: parsed.data.body, importance })
+            .eq("id", editingId)
+        ).error
+      : (
+          await supabase.from("announcements").insert({
+            title: parsed.data.title,
+            body: parsed.data.body,
+            importance,
+            author_id: me.user!.id,
+            author_name: me.profile?.full_name || me.user?.email,
+            author_role: highestRole(me.roles),
+          })
+        ).error;
     setBusy(false);
 
     if (error) {
-      toast.error("Could not publish", { description: error.message });
+      toast.error(editingId ? "Could not update" : "Could not publish", {
+        description: error.message,
+      });
       return;
     }
-    setTitle("");
-    setBody("");
-    setImportance("normal");
-    toast.success("Announcement published to all residents");
+    toast.success(
+      editingId ? "Announcement updated" : "Announcement published to all residents",
+    );
+    resetForm();
     void queryClient.invalidateQueries({ queryKey: ["announcements"] });
     void queryClient.invalidateQueries({ queryKey: ["announcements-recent"] });
   }
@@ -102,9 +129,12 @@ function Announcements() {
       toast.error("Could not delete", { description: error.message });
       return;
     }
+    if (editingId === id) resetForm();
     toast.success("Announcement removed");
     void queryClient.invalidateQueries({ queryKey: ["announcements"] });
+    void queryClient.invalidateQueries({ queryKey: ["announcements-recent"] });
   }
+
 
   return (
     <div className="space-y-8">
@@ -120,8 +150,9 @@ function Announcements() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Megaphone className="size-4 text-primary" />
-              Publish a new announcement
+              {editingId ? "Edit announcement" : "Publish a new announcement"}
             </CardTitle>
+
           </CardHeader>
           <CardContent>
             <form onSubmit={publish} className="space-y-4">
@@ -161,10 +192,18 @@ function Announcements() {
                   placeholder="Share the details residents need to know…"
                 />
               </div>
-              <Button type="submit" variant="hero" disabled={busy}>
-                {busy && <Loader2 className="size-4 animate-spin" />}
-                Publish &amp; notify residents
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" variant="hero" disabled={busy}>
+                  {busy && <Loader2 className="size-4 animate-spin" />}
+                  {editingId ? "Save changes" : "Publish & notify residents"}
+                </Button>
+                {editingId && (
+                  <Button type="button" variant="ghost" onClick={resetForm}>
+                    Cancel edit
+                  </Button>
+                )}
+              </div>
+
             </form>
           </CardContent>
         </Card>
@@ -195,10 +234,21 @@ function Announcements() {
                 {new Date(a.created_at).toLocaleString()}
               </span>
               {(me.elevated || a.author_id === me.user?.id) && (
-                <Button variant="ghost" size="sm" onClick={() => remove(a.id)}>
-                  Delete
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Edit announcement: ${a.title}`}
+                    onClick={() => startEdit(a)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => remove(a.id)}>
+                    Delete
+                  </Button>
+                </div>
               )}
+
             </div>
           </article>
         ))}
