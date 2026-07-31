@@ -230,7 +230,7 @@ function Announcements() {
             <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground">
               <span>
                 {a.author_name ?? "Committee"}
-                {a.author_role ? ` · ${ROLE_LABEL[a.author_role]}` : ""} ·{" "}
+                {a.author_role ? ` · ${ROLE_LABEL[a.author_role as AppRole] ?? a.author_role}` : ""} ·{" "}
                 {new Date(a.created_at).toLocaleString()}
               </span>
               {(me.elevated || a.author_id === me.user?.id) && (
