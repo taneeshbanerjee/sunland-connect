@@ -130,7 +130,7 @@ export async function assertStrongAuth(context: {
   const db = await admin();
   const roles = await rolesOf(db, context.userId);
   const elevated = roles.some((r) =>
-    ["super_admin", "treasurer", "president", "board_member"].includes(r),
+    ["super_admin", "treasurer", "president"].includes(r),
   );
   if (!elevated) return;
 
