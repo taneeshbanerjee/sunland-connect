@@ -2,7 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ShieldCheck, Users, Wallet, FileText, Loader2, Trash2 } from "lucide-react";
+import {
+  ShieldCheck,
+  Users,
+  Wallet,
+  FileText,
+  Loader2,
+  Trash2,
+  Receipt as ReceiptIcon,
+  EyeOff,
+} from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,11 +39,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMe } from "@/lib/use-me";
-import { ROLE_LABEL, ROLE_BLURB, type AppRole } from "@/lib/roles";
-import { assignRole, revokeRole, listCommittee } from "@/lib/admin.functions";
+import { ROLE_LABEL, ROLE_BLURB, MANAGED_ROLES, type AppRole } from "@/lib/roles";
+import {
+  assignRole,
+  revokeRole,
+  listCommittee,
+  transferRole,
+  deleteResident,
+} from "@/lib/admin.functions";
+import { issueReceipt, deleteReceipt } from "@/lib/receipts.functions";
 import { AuditTrail } from "@/components/AuditTrail";
-import { IncidentBoard } from "@/components/IncidentBoard";
-
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -43,12 +57,12 @@ export const Route = createFileRoute("/_authenticated/admin")({
       {
         name: "description",
         content:
-          "Committee console for Sunland Residency: manage residents, maintenance dues, submissions and admin roles.",
+          "Committee console for Sunland Residency: manage residents, maintenance dues, submissions, receipts and admin roles.",
       },
       { property: "og:title", content: "Committee Admin — Sunland Residency" },
       {
         property: "og:description",
-        content: "Manage residents, dues, submissions and committee roles.",
+        content: "Manage residents, dues, submissions, receipts and committee roles.",
       },
     ],
   }),
@@ -88,9 +102,9 @@ function AdminPage() {
           <TabsTrigger value="residents">Residents</TabsTrigger>
           <TabsTrigger value="dues">Maintenance</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
-          {me.superAdmin && <TabsTrigger value="roles">Admin roles</TabsTrigger>}
+          {me.elevated && <TabsTrigger value="receipts">Receipts</TabsTrigger>}
+          {me.supreme && <TabsTrigger value="roles">Admin roles</TabsTrigger>}
           {me.elevated && <TabsTrigger value="audit">Audit trail</TabsTrigger>}
-          {me.elevated && <TabsTrigger value="incidents">Monitoring</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="residents" className="mt-6">
@@ -102,7 +116,12 @@ function AdminPage() {
         <TabsContent value="submissions" className="mt-6">
           <SubmissionsPanel canEdit={me.elevated} />
         </TabsContent>
-        {me.superAdmin && (
+        {me.elevated && (
+          <TabsContent value="receipts" className="mt-6">
+            <ReceiptsPanel />
+          </TabsContent>
+        )}
+        {me.supreme && (
           <TabsContent value="roles" className="mt-6">
             <RolesPanel />
           </TabsContent>
@@ -112,40 +131,83 @@ function AdminPage() {
             <AuditTrail />
           </TabsContent>
         )}
-        {me.elevated && (
-          <TabsContent value="incidents" className="mt-6">
-            <IncidentBoard />
-          </TabsContent>
-        )}
       </Tabs>
-
     </div>
   );
 }
 
+type DirectoryRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  flat_no: string | null;
+  hide_flat_no: boolean;
+};
+
 function useResidents() {
   return useQuery({
     queryKey: ["residents"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, flat_no, phone, email")
-        .order("flat_no", { ascending: true });
+      const { data, error } = await supabase.rpc("residents_directory");
       if (error) throw error;
-      return data;
+      return ((data ?? []) as DirectoryRow[]).sort((a, b) =>
+        (a.flat_no ?? "~").localeCompare(b.flat_no ?? "~"),
+      );
     },
   });
 }
 
 function ResidentsPanel() {
+  const me = useMe();
+  const queryClient = useQueryClient();
   const residents = useResidents();
+  const removeResident = useServerFn(deleteResident);
+  const transfer = useServerFn(transferRole);
   const [q, setQ] = useState("");
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const rows = (residents.data ?? []).filter((r) => {
     const s = q.trim().toLowerCase();
     if (!s) return true;
-    return `${r.full_name} ${r.flat_no ?? ""} ${r.email ?? ""}`.toLowerCase().includes(s);
+    return `${r.full_name ?? ""} ${r.flat_no ?? ""} ${r.email ?? ""}`.toLowerCase().includes(s);
   });
+
+  async function onDelete(r: DirectoryRow) {
+    if (!window.confirm(`Remove ${r.full_name || r.email} from Sunland Residency?`)) return;
+    setBusyId(r.id);
+    try {
+      await removeResident({ data: { userId: r.id } });
+      toast.success("Resident removed");
+      void queryClient.invalidateQueries({ queryKey: ["residents"] });
+      void queryClient.invalidateQueries({ queryKey: ["committee"] });
+    } catch (err) {
+      toast.error("Could not remove resident", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onTransfer(r: DirectoryRow, role: string) {
+    setBusyId(r.id);
+    try {
+      await transfer({
+        data: { userId: r.id, role: role as "super_admin" | "treasurer" | "president" },
+      });
+      toast.success(`${ROLE_LABEL[role as AppRole]} role transferred to ${r.full_name || r.email}`);
+      void queryClient.invalidateQueries({ queryKey: ["committee"] });
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+    } catch (err) {
+      toast.error("Could not transfer role", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <Card className="panel border-0 bg-transparent">
@@ -172,15 +234,59 @@ function ResidentsPanel() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                {me.elevated && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.flat_no || "—"}</TableCell>
+                  <TableCell className="font-medium">
+                    {r.flat_no || (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <EyeOff className="size-3.5" /> hidden
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>{r.full_name || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{r.email}</TableCell>
                   <TableCell className="text-muted-foreground">{r.phone || "—"}</TableCell>
+                  {me.elevated && (
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        {me.superAdmin && r.id !== me.user?.id && (
+                          <Select
+                            value=""
+                            onValueChange={(v) => onTransfer(r, v)}
+                            disabled={busyId === r.id}
+                          >
+                            <SelectTrigger className="h-8 w-[150px] text-xs">
+                              <SelectValue placeholder="Assign role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MANAGED_ROLES.map((role) => (
+                                <SelectItem key={role} value={role}>
+                                  Make {ROLE_LABEL[role]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Remove ${r.full_name || r.email}`}
+                          disabled={busyId === r.id || r.id === me.user?.id}
+                          onClick={() => onDelete(r)}
+                        >
+                          {busyId === r.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-4 text-destructive" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
@@ -190,6 +296,7 @@ function ResidentsPanel() {
     </Card>
   );
 }
+
 
 function DuesPanel({ canEdit }: { canEdit: boolean }) {
   const queryClient = useQueryClient();
