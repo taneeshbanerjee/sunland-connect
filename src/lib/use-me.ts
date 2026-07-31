@@ -36,6 +36,8 @@ export function useMe() {
   const query = useQuery({
     queryKey: ["me", user?.id],
     enabled: !!user?.id,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
       try {
         await ensureAccount();
