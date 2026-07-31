@@ -3,9 +3,9 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.functions";
 
-export type ManagedRole = "super_admin" | "treasurer" | "president" | "board_member";
+export type ManagedRole = "super_admin" | "treasurer" | "president";
 
-const MANAGED = ["super_admin", "treasurer", "president", "board_member"] as const;
+const MANAGED = ["super_admin", "treasurer", "president"] as const;
 /** Roles that exist for exactly one person at a time. */
 const SINGLETON = ["super_admin", "treasurer", "president"] as const;
 
@@ -145,7 +145,7 @@ export const revokeRole = createServerFn({ method: "POST" })
     z
       .object({
         userId: z.string().uuid(),
-        role: z.enum(["super_admin", "treasurer", "president", "board_member"]),
+        role: z.enum(MANAGED),
       })
       .parse(input),
   )

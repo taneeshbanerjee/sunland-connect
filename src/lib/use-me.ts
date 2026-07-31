@@ -36,12 +36,11 @@ export function useMe() {
   const query = useQuery({
     queryKey: ["me", user?.id],
     enabled: !!user?.id,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
     queryFn: async () => {
-      try {
-        await ensureAccount();
-      } catch {
-        // non-fatal: profile/role bootstrap will retry on next load
-      }
+      // Bootstrap/session-expiry runs in the background so the UI is not blocked.
+      void ensureAccount().catch(() => {});
       const [{ data: profile }, { data: roleRows }] = await Promise.all([
         supabase
           .from("profiles")

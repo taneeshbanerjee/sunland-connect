@@ -91,7 +91,6 @@ export async function enforceIdleExpiry(userId: string, email: string | null) {
     const idleFor = Date.now() - new Date(existing.last_seen_at).getTime();
     if (idleFor > SESSION_IDLE_MS) {
       await revoke(db, userId, email, "idle_timeout");
-      await sweepExpiredSessions();
       return { expired: true, exempt: false };
     }
   }
@@ -103,7 +102,6 @@ export async function enforceIdleExpiry(userId: string, email: string | null) {
       { onConflict: "user_id" },
     );
 
-  await sweepExpiredSessions();
   return { expired: false, exempt };
 }
 
@@ -130,7 +128,7 @@ export async function assertStrongAuth(context: {
   const db = await admin();
   const roles = await rolesOf(db, context.userId);
   const elevated = roles.some((r) =>
-    ["super_admin", "treasurer", "president", "board_member"].includes(r),
+    ["super_admin", "treasurer", "president"].includes(r),
   );
   if (!elevated) return;
 

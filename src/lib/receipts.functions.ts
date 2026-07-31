@@ -93,12 +93,12 @@ export const issueReceipt = createServerFn({ method: "POST" })
 /** Signed download link, only for the receipt owner or a committee member. */
 export const receiptFileUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .inputValidator((input: unknown) => z.object({ receiptId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("receipts")
       .select("id, file_path")
-      .eq("id", data.id)
+      .eq("id", data.receiptId)
       .maybeSingle();
     if (error || !row?.file_path) throw new Error("Receipt file not found");
 

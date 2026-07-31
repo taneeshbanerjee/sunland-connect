@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   ShieldCheck,
   LogOut,
-  Activity,
   Settings,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,7 +33,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/announcements", label: "Announcements", icon: Bell, show: true },
     { to: "/admin", label: "Admin", icon: ShieldCheck, show: me.committee },
-    { to: "/monitoring", label: "Monitoring", icon: Activity, show: me.elevated },
     { to: "/settings", label: "Settings", icon: Settings, show: true },
   ].filter((n) => n.show);
 

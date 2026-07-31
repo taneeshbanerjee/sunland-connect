@@ -3,6 +3,7 @@ import { Bell, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useMe } from "@/lib/use-me";
 
 const ASKED_KEY = "sunland.notify.asked";
 
@@ -39,21 +40,25 @@ async function showNotification(title: string, body: string) {
 }
 
 /**
- * Asks for browser/phone notification permission on the first authenticated
- * visit and raises a notification whenever a new announcement is published.
+ * Asks for browser/phone notification permission once — on the first signed-in
+ * visit where the user has not decided yet — and raises a notification whenever
+ * a new announcement is published, if the user opted in.
  */
 export function NotificationGate() {
+  const me = useMe();
   const [prompt, setPrompt] = useState(false);
   const init = useRef(false);
+  const optedIn = me.profile?.notify_announcements ?? true;
 
   useEffect(() => {
-    if (!supported() || init.current) return;
+    // Only after the user is actually signed in, and only once per device.
+    if (!supported() || init.current || !me.user) return;
     init.current = true;
     void getRegistration();
     if (Notification.permission === "default" && !localStorage.getItem(ASKED_KEY)) {
       setPrompt(true);
     }
-  }, []);
+  }, [me.user]);
 
   const enable = useCallback(async () => {
     localStorage.setItem(ASKED_KEY, "1");
@@ -70,7 +75,7 @@ export function NotificationGate() {
         );
       } else {
         toast("Notifications stayed off", {
-          description: "You can enable them anytime from your browser's site settings.",
+          description: "You can enable them anytime from Settings.",
         });
       }
     } catch {
@@ -84,6 +89,7 @@ export function NotificationGate() {
   }, []);
 
   useEffect(() => {
+    if (!me.user || !optedIn) return;
     const channel = supabase
       .channel("announcements-live")
       .on(
@@ -102,7 +108,8 @@ export function NotificationGate() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [me.user, optedIn]);
+
 
   if (!prompt) return null;
 
