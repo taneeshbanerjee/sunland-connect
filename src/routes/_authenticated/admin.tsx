@@ -896,12 +896,33 @@ function ReceiptsPanel() {
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="rc-file">Scanned receipt (optional)</Label>
               <Input
+                key={fileKey}
                 id="rc-file"
                 type="file"
                 accept="image/*,application/pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
+              {file && (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-accent/25 px-3 py-2 text-xs">
+                  <span className="truncate">
+                    {file.name} · {(file.size / 1024).toFixed(0)} KB
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setFile(null);
+                      setFileKey((k) => k + 1);
+                    }}
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                    Remove file
+                  </Button>
+                </div>
+              )}
             </div>
+
             <div className="flex items-end md:col-span-2">
               <Button type="submit" variant="hero" disabled={busy}>
                 {busy && <Loader2 className="size-4 animate-spin" />}
