@@ -175,6 +175,7 @@ function ResidentsPanel() {
   const residents = useResidents();
   const removeResident = useServerFn(deleteResident);
   const transfer = useServerFn(transferRole);
+  const makeRecovery = useServerFn(createRecoveryLink);
   const [q, setQ] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -184,14 +185,42 @@ function ResidentsPanel() {
     return `${r.full_name ?? ""} ${r.flat_no ?? ""} ${r.email ?? ""}`.toLowerCase().includes(s);
   });
 
+  async function onResetLink(r: DirectoryRow) {
+    if (!r.email) return;
+    setBusyId(r.id);
+    try {
+      const res = await makeRecovery({
+        data: { email: r.email, redirectTo: `${window.location.origin}/reset-password` },
+      });
+      if (!res.url) throw new Error("No link returned");
+      await navigator.clipboard.writeText(res.url).catch(() => undefined);
+      toast.success("Password reset link copied", {
+        description: "Share it privately with the resident. It expires in 60 minutes.",
+        duration: 10000,
+      });
+    } catch (err) {
+      toast.error("Could not create a reset link", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function onDelete(r: DirectoryRow) {
-    if (!window.confirm(`Remove ${r.full_name || r.email} from Sunland Residency?`)) return;
+    if (
+      !window.confirm(
+        `Remove ${r.full_name || r.email} from Sunland Residency?\n\nThis erases their records and their login — they will not be able to sign in again unless they create a brand new account.`,
+      )
+    )
+      return;
     setBusyId(r.id);
     try {
       await removeResident({ data: { userId: r.id } });
-      toast.success("Resident removed");
+      toast.success("Resident removed and sign-in revoked");
       void queryClient.invalidateQueries({ queryKey: ["residents"] });
       void queryClient.invalidateQueries({ queryKey: ["committee"] });
+
     } catch (err) {
       toast.error("Could not remove resident", {
         description: err instanceof Error ? err.message : undefined,
