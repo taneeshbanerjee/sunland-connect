@@ -49,6 +49,7 @@ import {
   listCommittee,
   transferRole,
   deleteResident,
+  createRecoveryLink,
 } from "@/lib/admin.functions";
 import { issueReceipt, deleteReceipt } from "@/lib/receipts.functions";
 import { AuditTrail } from "@/components/AuditTrail";
