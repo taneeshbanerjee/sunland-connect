@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   LogOut,
   Settings,
+  MessageSquareWarning,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -34,6 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: "/announcements", label: "Announcements", icon: Bell, show: true },
     { to: "/admin", label: "Admin", icon: ShieldCheck, show: me.committee },
     { to: "/settings", label: "Settings", icon: Settings, show: true },
+    { to: "/report", label: "Report", icon: MessageSquareWarning, show: true },
   ].filter((n) => n.show);
 
 
