@@ -229,10 +229,27 @@ function Dashboard() {
                   {s.due_date && (
                     <p className="mt-1 text-[11px] text-muted-foreground">Deadline {s.due_date}</p>
                   )}
+                  {s.payment_required && (
+                    <p className="mt-1 text-[11px] text-primary">
+                      Payment requested
+                      {s.payment_amount
+                        ? ` · ${money(Number(s.payment_amount))}`
+                        : " · amount as advised"}
+                    </p>
+                  )}
                 </div>
-                <StatusBadge paid={s.done} submitLabel />
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <StatusBadge paid={s.done} submitLabel />
+                  {s.payment_required && !s.done && (
+                    <PayButton
+                      amount={s.payment_amount ? Number(s.payment_amount) : null}
+                      note={s.title}
+                    />
+                  )}
+                </div>
               </div>
             ))}
+
           </CardContent>
         </Card>
       </div>
