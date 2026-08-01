@@ -313,6 +313,14 @@ function AuthPage() {
             </TabsContent>
           </Tabs>
 
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Have an issue with the society or this portal?{" "}
+            <Link to="/report" className="text-primary hover:underline">
+              Send a report
+            </Link>
+          </p>
+
+
 
         </section>
       </div>
