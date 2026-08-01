@@ -314,6 +314,17 @@ function ResidentsPanel() {
                         <Button
                           size="icon"
                           variant="ghost"
+                          title="Copy a password reset link for this resident"
+                          aria-label={`Password reset link for ${r.full_name || r.email}`}
+                          disabled={busyId === r.id || !r.email}
+                          onClick={() => onResetLink(r)}
+                        >
+                          <KeyRound className="size-4" />
+                        </Button>
+                        <Button
+
+                          size="icon"
+                          variant="ghost"
                           aria-label={`Remove ${r.full_name || r.email}`}
                           disabled={busyId === r.id || r.id === me.user?.id}
                           onClick={() => onDelete(r)}
