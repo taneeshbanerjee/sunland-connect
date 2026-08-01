@@ -11,6 +11,8 @@ import {
   Trash2,
   Receipt as ReceiptIcon,
   EyeOff,
+  KeyRound,
+  MessageSquareWarning,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -1161,3 +1163,84 @@ function RolesPanel() {
   );
 }
 
+
+function ReportsPanel() {
+  const queryClient = useQueryClient();
+  const reports = useQuery({
+    queryKey: ["reports"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reports")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  async function setStatus(id: string, status: string) {
+    const { error } = await supabase.from("reports").update({ status }).eq("id", id);
+    if (error) {
+      toast.error("Update failed", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["reports"] });
+  }
+
+  async function drop(id: string) {
+    if (!window.confirm("Delete this report?")) return;
+    const { error } = await supabase.from("reports").delete().eq("id", id);
+    if (error) {
+      toast.error("Delete failed", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["reports"] });
+  }
+
+  return (
+    <Card className="panel border-0 bg-transparent">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <MessageSquareWarning className="size-4 text-primary" />
+          Reports from residents and visitors
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Anyone can send a report from the public report page.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {reports.isLoading && <Skeleton className="h-32 w-full" />}
+        {!reports.isLoading && (reports.data?.length ?? 0) === 0 && (
+          <p className="text-sm text-muted-foreground">No reports yet.</p>
+        )}
+        {(reports.data ?? []).map((r) => (
+          <div key={r.id} className="rounded-lg border border-border/70 bg-accent/25 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium">{r.subject}</p>
+              <Badge variant="secondary">{r.category}</Badge>
+              <Badge variant={r.status === "open" ? "destructive" : "secondary"}>{r.status}</Badge>
+            </div>
+            <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{r.message}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {r.name || "Anonymous"}
+              {r.email ? ` · ${r.email}` : ""} · {new Date(r.created_at).toLocaleString()}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() => setStatus(r.id, r.status === "open" ? "resolved" : "open")}
+              >
+                Mark {r.status === "open" ? "resolved" : "open"}
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => drop(r.id)}>
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
