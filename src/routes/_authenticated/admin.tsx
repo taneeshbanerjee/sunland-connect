@@ -969,10 +969,17 @@ function ReceiptsPanel() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => drop(r.id)}>
-                        <Trash2 className="size-4" />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Delete receipt ${r.title}`}
+                        onClick={() => drop(r.id, r.title)}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                        Delete
                       </Button>
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
