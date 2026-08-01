@@ -631,6 +631,32 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
+              <div className="rounded-lg border border-border/70 bg-accent/25 p-4">
+                <label className="flex items-center gap-3 text-sm font-medium">
+                  <Checkbox
+                    checked={paymentRequired}
+                    onCheckedChange={(v) => setPaymentRequired(v === true)}
+                  />
+                  Ask residents to pay for this submission
+                </label>
+                <p className="mt-1 pl-7 text-xs text-muted-foreground">
+                  When checked, a secure “Pay now” button appears on every resident's dashboard for
+                  this request.
+                </p>
+                {paymentRequired && (
+                  <div className="mt-3 max-w-[220px] space-y-2 pl-7">
+                    <Label htmlFor="s-pay-amount">Amount (₹, optional)</Label>
+                    <Input
+                      id="s-pay-amount"
+                      type="number"
+                      min="0"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder="2500"
+                    />
+                  </div>
+                )}
+              </div>
               <Button type="submit" variant="hero" disabled={busy}>
                 {busy && <Loader2 className="size-4 animate-spin" />}
                 Create request
@@ -643,9 +669,20 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
       {(requests.data ?? []).map((r) => (
         <Card key={r.id} className="panel border-0 bg-transparent">
           <CardHeader>
-            <CardTitle className="text-base">{r.title}</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+              {r.title}
+              {r.payment_required && (
+                <Badge variant="secondary">
+                  Payment requested
+                  {r.payment_amount
+                    ? ` · ₹${Number(r.payment_amount).toLocaleString("en-IN")}`
+                    : ""}
+                </Badge>
+              )}
+            </CardTitle>
             {r.description && <p className="text-sm text-muted-foreground">{r.description}</p>}
           </CardHeader>
+
           <CardContent>
             {residents.isLoading || submissions.isLoading ? (
               <Skeleton className="h-24 w-full" />
