@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/lib/use-me";
 import { receiptFileUrl } from "@/lib/receipts.functions";
+import { PayButton } from "@/components/PayButton";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
