@@ -803,6 +803,7 @@ function ReceiptsPanel() {
       setPeriod("");
       setNote("");
       setFile(null);
+      setFileKey((k) => k + 1);
       toast.success("Receipt sent to the resident");
       void queryClient.invalidateQueries({ queryKey: ["all-receipts"] });
     } catch (err) {
@@ -814,17 +815,21 @@ function ReceiptsPanel() {
     }
   }
 
-  async function drop(id: string) {
+  async function drop(id: string, label: string) {
+    if (!window.confirm(`Delete the receipt “${label}”? The resident will no longer see it.`))
+      return;
     try {
       await remove({ data: { id } });
       toast.success("Receipt deleted");
       void queryClient.invalidateQueries({ queryKey: ["all-receipts"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-receipts"] });
     } catch (err) {
       toast.error("Could not delete", {
         description: err instanceof Error ? err.message : undefined,
       });
     }
   }
+
 
   return (
     <div className="space-y-6">
