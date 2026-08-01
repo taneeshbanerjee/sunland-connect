@@ -508,6 +508,8 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [paymentRequired, setPaymentRequired] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
   const requests = useQuery({
@@ -537,8 +539,13 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
       .object({
         title: z.string().trim().min(3, "Give the request a title").max(140),
         description: z.string().trim().max(1000).optional(),
+        paymentAmount: z.coerce.number().min(0).max(10_000_000).optional(),
       })
-      .safeParse({ title, description });
+      .safeParse({
+        title,
+        description,
+        paymentAmount: paymentAmount === "" ? undefined : paymentAmount,
+      });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
@@ -548,6 +555,8 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
       title: parsed.data.title,
       description: parsed.data.description || null,
       due_date: dueDate || null,
+      payment_required: paymentRequired,
+      payment_amount: paymentRequired ? (parsed.data.paymentAmount ?? null) : null,
     });
     setBusy(false);
     if (error) {
@@ -557,9 +566,12 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
     setTitle("");
     setDescription("");
     setDueDate("");
+    setPaymentRequired(false);
+    setPaymentAmount("");
     toast.success("Submission request created");
     void queryClient.invalidateQueries({ queryKey: ["submission-requests"] });
   }
+
 
   async function toggle(requestId: string, resId: string, current: boolean) {
     const { error } = await supabase.from("submissions").upsert(
