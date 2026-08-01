@@ -739,6 +739,7 @@ function ReceiptsPanel() {
   const [period, setPeriod] = useState("");
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const receipts = useQuery({
