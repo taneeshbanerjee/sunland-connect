@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMe } from "@/lib/use-me";
 import { receiptFileUrl } from "@/lib/receipts.functions";
+import { PayButton } from "@/components/PayButton";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -198,7 +199,15 @@ function Dashboard() {
                     {d.due_date ? ` · due ${d.due_date}` : ""}
                   </p>
                 </div>
-                <StatusBadge paid={d.status === "paid"} partial={d.status === "partial"} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge paid={d.status === "paid"} partial={d.status === "partial"} />
+                  {d.status !== "paid" && (
+                    <PayButton
+                      amount={Number(d.amount)}
+                      note={`Maintenance ${d.period ?? ""}`.trim()}
+                    />
+                  )}
+                </div>
               </div>
             ))}
           </CardContent>
@@ -229,10 +238,27 @@ function Dashboard() {
                   {s.due_date && (
                     <p className="mt-1 text-[11px] text-muted-foreground">Deadline {s.due_date}</p>
                   )}
+                  {s.payment_required && (
+                    <p className="mt-1 text-[11px] text-primary">
+                      Payment requested
+                      {s.payment_amount
+                        ? ` · ${money(Number(s.payment_amount))}`
+                        : " · amount as advised"}
+                    </p>
+                  )}
                 </div>
-                <StatusBadge paid={s.done} submitLabel />
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <StatusBadge paid={s.done} submitLabel />
+                  {s.payment_required && !s.done && (
+                    <PayButton
+                      amount={s.payment_amount ? Number(s.payment_amount) : null}
+                      note={s.title}
+                    />
+                  )}
+                </div>
               </div>
             ))}
+
           </CardContent>
         </Card>
       </div>

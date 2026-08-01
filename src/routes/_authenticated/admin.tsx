@@ -11,6 +11,8 @@ import {
   Trash2,
   Receipt as ReceiptIcon,
   EyeOff,
+  KeyRound,
+  MessageSquareWarning,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -21,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -46,6 +49,7 @@ import {
   listCommittee,
   transferRole,
   deleteResident,
+  createRecoveryLink,
 } from "@/lib/admin.functions";
 import { issueReceipt, deleteReceipt } from "@/lib/receipts.functions";
 import { AuditTrail } from "@/components/AuditTrail";
@@ -103,6 +107,7 @@ function AdminPage() {
           <TabsTrigger value="dues">Maintenance</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
           {me.elevated && <TabsTrigger value="receipts">Receipts</TabsTrigger>}
+          {me.elevated && <TabsTrigger value="reports">Reports</TabsTrigger>}
           {me.supreme && <TabsTrigger value="roles">Admin roles</TabsTrigger>}
           {me.elevated && <TabsTrigger value="audit">Audit trail</TabsTrigger>}
         </TabsList>
@@ -121,6 +126,11 @@ function AdminPage() {
             <ReceiptsPanel />
           </TabsContent>
         )}
+        {me.elevated && (
+          <TabsContent value="reports" className="mt-6">
+            <ReportsPanel />
+          </TabsContent>
+        )}
         {me.supreme && (
           <TabsContent value="roles" className="mt-6">
             <RolesPanel />
@@ -131,6 +141,7 @@ function AdminPage() {
             <AuditTrail />
           </TabsContent>
         )}
+
       </Tabs>
     </div>
   );
@@ -165,6 +176,7 @@ function ResidentsPanel() {
   const residents = useResidents();
   const removeResident = useServerFn(deleteResident);
   const transfer = useServerFn(transferRole);
+  const makeRecovery = useServerFn(createRecoveryLink);
   const [q, setQ] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -174,14 +186,42 @@ function ResidentsPanel() {
     return `${r.full_name ?? ""} ${r.flat_no ?? ""} ${r.email ?? ""}`.toLowerCase().includes(s);
   });
 
+  async function onResetLink(r: DirectoryRow) {
+    if (!r.email) return;
+    setBusyId(r.id);
+    try {
+      const res = await makeRecovery({
+        data: { email: r.email, redirectTo: `${window.location.origin}/reset-password` },
+      });
+      if (!res.url) throw new Error("No link returned");
+      await navigator.clipboard.writeText(res.url).catch(() => undefined);
+      toast.success("Password reset link copied", {
+        description: "Share it privately with the resident. It expires in 60 minutes.",
+        duration: 10000,
+      });
+    } catch (err) {
+      toast.error("Could not create a reset link", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function onDelete(r: DirectoryRow) {
-    if (!window.confirm(`Remove ${r.full_name || r.email} from Sunland Residency?`)) return;
+    if (
+      !window.confirm(
+        `Remove ${r.full_name || r.email} from Sunland Residency?\n\nThis erases their records and their login — they will not be able to sign in again unless they create a brand new account.`,
+      )
+    )
+      return;
     setBusyId(r.id);
     try {
       await removeResident({ data: { userId: r.id } });
-      toast.success("Resident removed");
+      toast.success("Resident removed and sign-in revoked");
       void queryClient.invalidateQueries({ queryKey: ["residents"] });
       void queryClient.invalidateQueries({ queryKey: ["committee"] });
+
     } catch (err) {
       toast.error("Could not remove resident", {
         description: err instanceof Error ? err.message : undefined,
@@ -272,6 +312,17 @@ function ResidentsPanel() {
                           </Select>
                         )}
                         <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Copy a password reset link for this resident"
+                          aria-label={`Password reset link for ${r.full_name || r.email}`}
+                          disabled={busyId === r.id || !r.email}
+                          onClick={() => onResetLink(r)}
+                        >
+                          <KeyRound className="size-4" />
+                        </Button>
+                        <Button
+
                           size="icon"
                           variant="ghost"
                           aria-label={`Remove ${r.full_name || r.email}`}
@@ -508,6 +559,8 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [paymentRequired, setPaymentRequired] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [busy, setBusy] = useState(false);
 
   const requests = useQuery({
@@ -537,8 +590,13 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
       .object({
         title: z.string().trim().min(3, "Give the request a title").max(140),
         description: z.string().trim().max(1000).optional(),
+        paymentAmount: z.coerce.number().min(0).max(10_000_000).optional(),
       })
-      .safeParse({ title, description });
+      .safeParse({
+        title,
+        description,
+        paymentAmount: paymentAmount === "" ? undefined : paymentAmount,
+      });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0].message);
       return;
@@ -548,6 +606,8 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
       title: parsed.data.title,
       description: parsed.data.description || null,
       due_date: dueDate || null,
+      payment_required: paymentRequired,
+      payment_amount: paymentRequired ? (parsed.data.paymentAmount ?? null) : null,
     });
     setBusy(false);
     if (error) {
@@ -557,9 +617,12 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
     setTitle("");
     setDescription("");
     setDueDate("");
+    setPaymentRequired(false);
+    setPaymentAmount("");
     toast.success("Submission request created");
     void queryClient.invalidateQueries({ queryKey: ["submission-requests"] });
   }
+
 
   async function toggle(requestId: string, resId: string, current: boolean) {
     const { error } = await supabase.from("submissions").upsert(
@@ -619,6 +682,32 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
+              <div className="rounded-lg border border-border/70 bg-accent/25 p-4">
+                <label className="flex items-center gap-3 text-sm font-medium">
+                  <Checkbox
+                    checked={paymentRequired}
+                    onCheckedChange={(v) => setPaymentRequired(v === true)}
+                  />
+                  Ask residents to pay for this submission
+                </label>
+                <p className="mt-1 pl-7 text-xs text-muted-foreground">
+                  When checked, a secure “Pay now” button appears on every resident's dashboard for
+                  this request.
+                </p>
+                {paymentRequired && (
+                  <div className="mt-3 max-w-[220px] space-y-2 pl-7">
+                    <Label htmlFor="s-pay-amount">Amount (₹, optional)</Label>
+                    <Input
+                      id="s-pay-amount"
+                      type="number"
+                      min="0"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      placeholder="2500"
+                    />
+                  </div>
+                )}
+              </div>
               <Button type="submit" variant="hero" disabled={busy}>
                 {busy && <Loader2 className="size-4 animate-spin" />}
                 Create request
@@ -631,9 +720,20 @@ function SubmissionsPanel({ canEdit }: { canEdit: boolean }) {
       {(requests.data ?? []).map((r) => (
         <Card key={r.id} className="panel border-0 bg-transparent">
           <CardHeader>
-            <CardTitle className="text-base">{r.title}</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+              {r.title}
+              {r.payment_required && (
+                <Badge variant="secondary">
+                  Payment requested
+                  {r.payment_amount
+                    ? ` · ₹${Number(r.payment_amount).toLocaleString("en-IN")}`
+                    : ""}
+                </Badge>
+              )}
+            </CardTitle>
             {r.description && <p className="text-sm text-muted-foreground">{r.description}</p>}
           </CardHeader>
+
           <CardContent>
             {residents.isLoading || submissions.isLoading ? (
               <Skeleton className="h-24 w-full" />
@@ -689,6 +789,7 @@ function ReceiptsPanel() {
   const [period, setPeriod] = useState("");
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileKey, setFileKey] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const receipts = useQuery({
@@ -752,6 +853,7 @@ function ReceiptsPanel() {
       setPeriod("");
       setNote("");
       setFile(null);
+      setFileKey((k) => k + 1);
       toast.success("Receipt sent to the resident");
       void queryClient.invalidateQueries({ queryKey: ["all-receipts"] });
     } catch (err) {
@@ -763,17 +865,21 @@ function ReceiptsPanel() {
     }
   }
 
-  async function drop(id: string) {
+  async function drop(id: string, label: string) {
+    if (!window.confirm(`Delete the receipt “${label}”? The resident will no longer see it.`))
+      return;
     try {
       await remove({ data: { id } });
       toast.success("Receipt deleted");
       void queryClient.invalidateQueries({ queryKey: ["all-receipts"] });
+      void queryClient.invalidateQueries({ queryKey: ["my-receipts"] });
     } catch (err) {
       toast.error("Could not delete", {
         description: err instanceof Error ? err.message : undefined,
       });
     }
   }
+
 
   return (
     <div className="space-y-6">
@@ -846,12 +952,33 @@ function ReceiptsPanel() {
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="rc-file">Scanned receipt (optional)</Label>
               <Input
+                key={fileKey}
                 id="rc-file"
                 type="file"
                 accept="image/*,application/pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
+              {file && (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-accent/25 px-3 py-2 text-xs">
+                  <span className="truncate">
+                    {file.name} · {(file.size / 1024).toFixed(0)} KB
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setFile(null);
+                      setFileKey((k) => k + 1);
+                    }}
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                    Remove file
+                  </Button>
+                </div>
+              )}
             </div>
+
             <div className="flex items-end md:col-span-2">
               <Button type="submit" variant="hero" disabled={busy}>
                 {busy && <Loader2 className="size-4 animate-spin" />}
@@ -892,10 +1019,17 @@ function ReceiptsPanel() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => drop(r.id)}>
-                        <Trash2 className="size-4" />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        aria-label={`Delete receipt ${r.title}`}
+                        onClick={() => drop(r.id, r.title)}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                        Delete
                       </Button>
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
@@ -1070,3 +1204,84 @@ function RolesPanel() {
   );
 }
 
+
+function ReportsPanel() {
+  const queryClient = useQueryClient();
+  const reports = useQuery({
+    queryKey: ["reports"],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reports")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  async function setStatus(id: string, status: string) {
+    const { error } = await supabase.from("reports").update({ status }).eq("id", id);
+    if (error) {
+      toast.error("Update failed", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["reports"] });
+  }
+
+  async function drop(id: string) {
+    if (!window.confirm("Delete this report?")) return;
+    const { error } = await supabase.from("reports").delete().eq("id", id);
+    if (error) {
+      toast.error("Delete failed", { description: error.message });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["reports"] });
+  }
+
+  return (
+    <Card className="panel border-0 bg-transparent">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <MessageSquareWarning className="size-4 text-primary" />
+          Reports from residents and visitors
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Anyone can send a report from the public report page.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {reports.isLoading && <Skeleton className="h-32 w-full" />}
+        {!reports.isLoading && (reports.data?.length ?? 0) === 0 && (
+          <p className="text-sm text-muted-foreground">No reports yet.</p>
+        )}
+        {(reports.data ?? []).map((r) => (
+          <div key={r.id} className="rounded-lg border border-border/70 bg-accent/25 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium">{r.subject}</p>
+              <Badge variant="secondary">{r.category}</Badge>
+              <Badge variant={r.status === "open" ? "destructive" : "secondary"}>{r.status}</Badge>
+            </div>
+            <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{r.message}</p>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {r.name || "Anonymous"}
+              {r.email ? ` · ${r.email}` : ""} · {new Date(r.created_at).toLocaleString()}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <Button
+                size="sm"
+                variant="subtle"
+                onClick={() => setStatus(r.id, r.status === "open" ? "resolved" : "open")}
+              >
+                Mark {r.status === "open" ? "resolved" : "open"}
+              </Button>
+              <Button size="icon" variant="ghost" onClick={() => drop(r.id)}>
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}

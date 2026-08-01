@@ -248,57 +248,52 @@ export const transferRole = createServerFn({ method: "POST" })
   });
 
 /**
- * Removes a resident entirely (account + records).
- * Super Admin, Treasurer and President only. Board Members cannot.
+ * Removes a resident entirely (account + records) through the SECURITY DEFINER
+ * `delete_resident` database tool. The database enforces the rules:
+ * only Super Admin / Treasurer / President may call it, a Super Admin can never
+ * be removed by anyone, and the auth login row is deleted so the person cannot
+ * sign in again until they create a brand new account.
  */
 export const deleteResident = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.rpc("delete_resident", { _target: data.userId });
+    if (error) throw new Error(error.message.replace(/^.*?:\s*/, ""));
+    return { ok: true };
+  });
+
+/**
+ * Super Admin / Treasurer / President can mint a one-time password reset link
+ * for a resident who cannot receive the reset email. The link is shown once to
+ * the admin, who passes it on to the resident.
+ */
+export const createRecoveryLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ email: z.string().trim().email().max(255), redirectTo: z.string().url() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
     const roles = await myRoles(context);
-    const allowed = roles.some((r) => ["super_admin", "treasurer", "president"].includes(r));
-    if (!allowed) throw new Error("Forbidden: you cannot remove residents");
-    if (data.userId === context.userId) throw new Error("You cannot remove your own account");
-
+    if (!roles.some((r) => ["super_admin", "treasurer", "president"].includes(r))) {
+      throw new Error("Forbidden");
+    }
     const supabaseAdmin = await adminClient();
-
-    const { data: targetRoles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.userId);
-    const targetIsSupreme = (targetRoles ?? []).some((r) =>
-      ["super_admin", "treasurer"].includes(r.role as string),
-    );
-    if (targetIsSupreme && !roles.includes("super_admin")) {
-      throw new Error("Only the Super Admin can remove another supreme role holder");
-    }
-    if ((targetRoles ?? []).some((r) => r.role === "super_admin")) {
-      throw new Error("The Super Admin account cannot be removed. Transfer the role first.");
-    }
-
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("email")
-      .eq("id", data.userId)
-      .maybeSingle();
-
-    await supabaseAdmin.from("maintenance_dues").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("submissions").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("receipts").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("session_activity").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    const { data: link, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "recovery",
+      email: data.email.toLowerCase(),
+      options: { redirectTo: data.redirectTo },
+    });
     if (error) throw new Error(error.message);
 
     await writeAudit({
       actorId: context.userId,
       actorEmail: (context.claims as { email?: string } | undefined)?.email ?? null,
-      action: "resident_removed",
+      action: "recovery_link_created",
       category: "admin",
-      targetId: data.userId,
-      targetEmail: profile?.email ?? null,
+      targetEmail: data.email,
     });
 
-    return { ok: true };
+    return { url: link.properties?.action_link ?? null };
   });
+

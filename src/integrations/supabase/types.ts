@@ -260,6 +260,45 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          category: string
+          created_at: string
+          email: string | null
+          id: string
+          message: string
+          name: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          message: string
+          name?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string
+          name?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       session_activity: {
         Row: {
           created_at: string
@@ -291,6 +330,8 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          payment_amount: number | null
+          payment_required: boolean
           title: string
         }
         Insert: {
@@ -299,6 +340,8 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          payment_amount?: number | null
+          payment_required?: boolean
           title: string
         }
         Update: {
@@ -307,6 +350,8 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          payment_amount?: number | null
+          payment_required?: boolean
           title?: string
         }
         Relationships: []
@@ -375,6 +420,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_resident: { Args: { _target: string }; Returns: Json }
       residents_directory: {
         Args: never
         Returns: {

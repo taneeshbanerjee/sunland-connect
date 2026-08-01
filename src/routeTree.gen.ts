@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as ReportRouteImport } from './routes/report'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -28,6 +29,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -74,6 +80,7 @@ const ApiPublicSessionsSweepRoute = ApiPublicSessionsSweepRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/report': typeof ReportRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/report': typeof ReportRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/report': typeof ReportRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/forgot-password'
+    | '/report'
     | '/reset-password'
     | '/sitemap.xml'
     | '/admin'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/forgot-password'
+    | '/report'
     | '/reset-password'
     | '/sitemap.xml'
     | '/admin'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/forgot-password'
+    | '/report'
     | '/reset-password'
     | '/sitemap.xml'
     | '/_authenticated/admin'
@@ -147,6 +159,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  ReportRoute: typeof ReportRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiPublicSessionsSweepRoute: typeof ApiPublicSessionsSweepRoute
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -248,6 +268,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  ReportRoute: ReportRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiPublicSessionsSweepRoute: ApiPublicSessionsSweepRoute,
