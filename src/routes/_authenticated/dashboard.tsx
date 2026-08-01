@@ -199,7 +199,15 @@ function Dashboard() {
                     {d.due_date ? ` · due ${d.due_date}` : ""}
                   </p>
                 </div>
-                <StatusBadge paid={d.status === "paid"} partial={d.status === "partial"} />
+                <div className="flex shrink-0 items-center gap-2">
+                  <StatusBadge paid={d.status === "paid"} partial={d.status === "partial"} />
+                  {d.status !== "paid" && (
+                    <PayButton
+                      amount={Number(d.amount)}
+                      note={`Maintenance ${d.period ?? ""}`.trim()}
+                    />
+                  )}
+                </div>
               </div>
             ))}
           </CardContent>
