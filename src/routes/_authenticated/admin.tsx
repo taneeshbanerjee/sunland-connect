@@ -104,6 +104,7 @@ function AdminPage() {
           <TabsTrigger value="dues">Maintenance</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
           {me.elevated && <TabsTrigger value="receipts">Receipts</TabsTrigger>}
+          {me.elevated && <TabsTrigger value="reports">Reports</TabsTrigger>}
           {me.supreme && <TabsTrigger value="roles">Admin roles</TabsTrigger>}
           {me.elevated && <TabsTrigger value="audit">Audit trail</TabsTrigger>}
         </TabsList>
@@ -122,6 +123,11 @@ function AdminPage() {
             <ReceiptsPanel />
           </TabsContent>
         )}
+        {me.elevated && (
+          <TabsContent value="reports" className="mt-6">
+            <ReportsPanel />
+          </TabsContent>
+        )}
         {me.supreme && (
           <TabsContent value="roles" className="mt-6">
             <RolesPanel />
@@ -132,6 +138,7 @@ function AdminPage() {
             <AuditTrail />
           </TabsContent>
         )}
+
       </Tabs>
     </div>
   );
