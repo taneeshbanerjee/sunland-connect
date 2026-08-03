@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.functions";
+import { assertStrongAuth } from "@/lib/session.functions";
+
 
 export type ManagedRole = "super_admin" | "treasurer" | "president";
 
