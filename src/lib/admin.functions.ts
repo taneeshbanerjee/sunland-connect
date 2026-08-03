@@ -28,6 +28,7 @@ async function adminClient() {
 export const listCommittee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await assertStrongAuth(context);
     const callerRoles = await myRoles(context);
     const allowed = callerRoles.some((r) => MANAGED.includes(r as ManagedRole));
     if (!allowed) throw new Error("Forbidden");
@@ -70,6 +71,7 @@ export const assignRole = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertStrongAuth(context);
     const roles = await myRoles(context);
     const isSuper = roles.includes("super_admin");
     const isTreasurer = roles.includes("treasurer");
@@ -152,6 +154,7 @@ export const revokeRole = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertStrongAuth(context);
     const roles = await myRoles(context);
     const isSuper = roles.includes("super_admin");
     const isTreasurer = roles.includes("treasurer");
@@ -202,6 +205,7 @@ export const transferRole = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertStrongAuth(context);
     const roles = await myRoles(context);
     if (!roles.includes("super_admin")) {
       throw new Error("Forbidden: only the Super Admin can transfer this role");
@@ -276,6 +280,7 @@ export const createRecoveryLink = createServerFn({ method: "POST" })
     z.object({ email: z.string().trim().email().max(255), redirectTo: z.string().url() }).parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertStrongAuth(context);
     const roles = await myRoles(context);
     if (!roles.some((r) => ["super_admin", "treasurer", "president"].includes(r))) {
       throw new Error("Forbidden");
