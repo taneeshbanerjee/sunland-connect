@@ -70,24 +70,48 @@ function AuthPage() {
     }
 
     setBusy(true);
+    const gate = await checkGate({ data: { email: parsed.data.email } }).catch(() => null);
+    if (gate?.locked) {
+      setBusy(false);
+      toast.error("Account temporarily locked", {
+        description: `Too many failed attempts. Try again in about ${Math.ceil(
+          gate.retryAfterSeconds / 60,
+        )} minute(s), or reset your password.`,
+      });
+      return;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
     });
     setBusy(false);
     if (error || !data.session) {
-      void recordLoginAttempt({
+      const outcome = await noteOutcome({
         data: {
           email: parsed.data.email,
           success: false,
           reason: (error?.message ?? "No session returned").slice(0, 200),
         },
-      }).catch(() => {});
+      }).catch(() => null);
+      if (outcome?.locked) {
+        toast.error("Account temporarily locked", {
+          description: `Too many failed attempts. Try again in about ${Math.ceil(
+            outcome.retryAfterSeconds / 60,
+          )} minute(s), or reset your password.`,
+        });
+        return;
+      }
       const msg = authErrorMessage(error ?? { message: "No session returned" });
-      toast.error(msg.title, { description: msg.description });
+      toast.error(msg.title, {
+        description:
+          typeof outcome?.remaining === "number" && outcome.remaining > 0
+            ? `${msg.description} ${outcome.remaining} attempt(s) left before a temporary lock.`
+            : msg.description,
+      });
       return;
     }
-    void recordLoginAttempt({ data: { email: parsed.data.email, success: true } }).catch(() => {});
+    void noteOutcome({ data: { email: parsed.data.email, success: true } }).catch(() => {});
     toast.success("Signed in");
     navigate({ to: "/dashboard", replace: true });
   }
