@@ -131,6 +131,36 @@ export type Database = {
         }
         Relationships: []
       }
+      login_lockouts: {
+        Row: {
+          created_at: string
+          email: string
+          failed_count: number
+          first_failed_at: string
+          last_failed_at: string
+          locked_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          failed_count?: number
+          first_failed_at?: string
+          last_failed_at?: string
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          failed_count?: number
+          first_failed_at?: string
+          last_failed_at?: string
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       maintenance_dues: {
         Row: {
           amount: number
@@ -167,6 +197,45 @@ export type Database = {
           note?: string | null
           paid_at?: string | null
           period?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_intents: {
+        Row: {
+          amount: number | null
+          context: string
+          created_at: string
+          id: string
+          idempotency_key: string
+          note: string | null
+          reference_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          context: string
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          note?: string | null
+          reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          context?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          note?: string | null
+          reference_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
