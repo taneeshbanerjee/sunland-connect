@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authErrorMessage } from "@/lib/auth-errors";
-import { recordLoginAttempt } from "@/lib/audit.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { loginGate, noteLoginOutcome } from "@/lib/login-guard.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
