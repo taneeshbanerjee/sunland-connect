@@ -1,7 +1,7 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Your email", "Check inbox", "New password"] as const;
+const STEPS = ["Your email", "Verify code", "New password"] as const;
 
 /** Progress indicator shared by the forgot-password and reset-password screens. */
 export function ResetSteps({ current }: { current: 1 | 2 | 3 }) {
