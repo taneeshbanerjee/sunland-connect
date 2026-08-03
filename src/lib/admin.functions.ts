@@ -254,9 +254,9 @@ export const transferRole = createServerFn({ method: "POST" })
   });
 
 /**
- * Removes a resident entirely (account + records) through the SECURITY DEFINER
- * `delete_resident` database tool. The database enforces the rules:
- * only Super Admin / Treasurer / President may call it, a Super Admin can never
+ * Removes a resident entirely (account + records). All rules are enforced here
+ * on the server: only Super Admin / Treasurer / President may call it, only the
+ * Super Admin can remove another committee role holder, a Super Admin can never
  * be removed by anyone, and the auth login row is deleted so the person cannot
  * sign in again until they create a brand new account.
  */
@@ -264,10 +264,61 @@ export const deleteResident = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.rpc("delete_resident", { _target: data.userId });
-    if (error) throw new Error(error.message.replace(/^.*?:\s*/, ""));
-    return { ok: true };
+    await assertStrongAuth(context);
+    const target = data.userId;
+    if (target === context.userId) throw new Error("You cannot remove your own account");
+
+    const callerRoles = await myRoles(context);
+    if (!callerRoles.some((r) => ["super_admin", "treasurer", "president"].includes(r))) {
+      throw new Error("Forbidden: you cannot remove residents");
+    }
+    const callerSuper = callerRoles.includes("super_admin");
+
+    const db = await adminClient();
+    const { data: targetRoleRows } = await db
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", target);
+    const targetRoles = (targetRoleRows ?? []).map((r) => r.role as string);
+
+    if (targetRoles.includes("super_admin")) {
+      throw new Error("The Super Admin cannot be removed from the residency database");
+    }
+    if (targetRoles.some((r) => ["treasurer", "president"].includes(r)) && !callerSuper) {
+      throw new Error("Only the Super Admin can remove another committee role holder");
+    }
+
+    const { data: profile } = await db
+      .from("profiles")
+      .select("email")
+      .eq("id", target)
+      .maybeSingle();
+
+    await db.from("maintenance_dues").delete().eq("user_id", target);
+    await db.from("submissions").delete().eq("user_id", target);
+    await db.from("receipts").delete().eq("user_id", target);
+    await db.from("session_activity").delete().eq("user_id", target);
+    await db.from("user_roles").delete().eq("user_id", target);
+    await db.from("announcements").update({ author_id: null }).eq("author_id", target);
+    await db.from("profiles").delete().eq("id", target);
+
+    // Revoke sign-in permanently: the auth account itself is removed.
+    const { error: authErr } = await db.auth.admin.deleteUser(target);
+    if (authErr) throw new Error(authErr.message);
+
+    await writeAudit({
+      actorId: context.userId,
+      actorEmail: (context.claims as { email?: string } | undefined)?.email ?? null,
+      action: "resident_removed",
+      category: "admin",
+      targetId: target,
+      targetEmail: profile?.email ?? null,
+      details: { auth_account_deleted: true },
+    });
+
+    return { ok: true, email: profile?.email ?? null };
   });
+
 
 /**
  * Super Admin / Treasurer / President can mint a one-time password reset link
