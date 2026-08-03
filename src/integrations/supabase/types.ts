@@ -420,19 +420,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      delete_resident: { Args: { _target: string }; Returns: Json }
-      residents_directory: {
-        Args: never
-        Returns: {
-          created_at: string
-          email: string
-          flat_no: string
-          full_name: string
-          hide_flat_no: boolean
-          id: string
-          phone: string
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       app_role:
