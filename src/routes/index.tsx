@@ -38,6 +38,9 @@ function AuthPage() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
   const [busy, setBusy] = useState(false);
+  const checkGate = useServerFn(loginGate);
+  const noteOutcome = useServerFn(noteLoginOutcome);
+
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
