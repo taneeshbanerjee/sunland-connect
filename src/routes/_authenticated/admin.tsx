@@ -52,6 +52,7 @@ import {
   createRecoveryLink,
 } from "@/lib/admin.functions";
 import { issueReceipt, deleteReceipt } from "@/lib/receipts.functions";
+import { listResidents } from "@/lib/directory.functions";
 import { AuditTrail } from "@/components/AuditTrail";
 
 export const Route = createFileRoute("/_authenticated/admin")({
