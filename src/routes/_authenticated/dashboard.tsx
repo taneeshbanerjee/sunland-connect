@@ -255,6 +255,8 @@ function Dashboard() {
                     <PayButton
                       amount={s.payment_amount ? Number(s.payment_amount) : null}
                       note={s.title}
+                      context="submission"
+                      referenceId={s.id}
                     />
                   )}
                 </div>
