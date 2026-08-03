@@ -52,6 +52,7 @@ import {
   createRecoveryLink,
 } from "@/lib/admin.functions";
 import { issueReceipt, deleteReceipt } from "@/lib/receipts.functions";
+import { listResidents } from "@/lib/directory.functions";
 import { AuditTrail } from "@/components/AuditTrail";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -157,12 +158,12 @@ type DirectoryRow = {
 };
 
 function useResidents() {
+  const listResidentsFn = useServerFn(listResidents);
   return useQuery({
     queryKey: ["residents"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("residents_directory");
-      if (error) throw error;
+      const data = await listResidentsFn();
       return ((data ?? []) as DirectoryRow[]).sort((a, b) =>
         (a.flat_no ?? "~").localeCompare(b.flat_no ?? "~"),
       );

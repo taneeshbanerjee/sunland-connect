@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.functions";
+import { assertStrongAuth } from "@/lib/session.functions";
 
 export type ReceiptRow = {
   id: string;
@@ -47,6 +48,7 @@ export const issueReceipt = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    await assertStrongAuth(context);
     const roles = await rolesOf(context);
     if (!roles.some((r) => ["super_admin", "treasurer", "president"].includes(r))) {
       throw new Error("Forbidden: only elevated committee roles can issue receipts");
@@ -114,6 +116,7 @@ export const deleteReceipt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
+    await assertStrongAuth(context);
     const roles = await rolesOf(context);
     if (!roles.some((r) => ["super_admin", "treasurer", "president"].includes(r))) {
       throw new Error("Forbidden");
