@@ -1,15 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { KeyRound, Loader2, ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ResetSteps } from "@/components/ResetSteps";
-import { authErrorMessage } from "@/lib/auth-errors";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
+/**
+ * Legacy magic-link reset entry point. Password reset now uses a 6-digit
+ * email code, so any old link lands here and is forwarded to that flow.
+ */
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
   head: () => ({
@@ -28,202 +24,18 @@ export const Route = createFileRoute("/reset-password")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: ResetPasswordPage,
+  component: ResetPasswordRedirect,
 });
 
-function ResetPasswordPage() {
+function ResetPasswordRedirect() {
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
-  const [valid, setValid] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [linkError, setLinkError] = useState<string | null>(null);
-
-
   useEffect(() => {
-    let active = true;
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-        setValid(true);
-        setReady(true);
-      }
-    });
-
-    async function establish() {
-      const url = new URL(window.location.href);
-      const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
-
-      const errorDescription =
-        hash.get("error_description") ?? url.searchParams.get("error_description");
-      if (errorDescription) {
-        setLinkError(errorDescription);
-        setValid(false);
-        setReady(true);
-        return;
-      }
-
-      // 1. Implicit flow: tokens arrive in the URL fragment.
-      const accessToken = hash.get("access_token");
-      const refreshToken = hash.get("refresh_token");
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        window.history.replaceState({}, "", url.pathname);
-        if (!active) return;
-        setValid(!error);
-        if (error) setLinkError(error.message);
-        setReady(true);
-        return;
-      }
-
-      // 2. PKCE flow: ?code=...
-      const code = url.searchParams.get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        window.history.replaceState({}, "", url.pathname);
-        if (!active) return;
-        setValid(!error);
-        if (error) setLinkError(error.message);
-        setReady(true);
-        return;
-      }
-
-      // 3. Token-hash flow: ?token_hash=...&type=recovery
-      const tokenHash = url.searchParams.get("token_hash") ?? url.searchParams.get("token");
-      if (tokenHash) {
-        const { error } = await supabase.auth.verifyOtp({
-          type: "recovery",
-          token_hash: tokenHash,
-        });
-        window.history.replaceState({}, "", url.pathname);
-        if (!active) return;
-        setValid(!error);
-        if (error) setLinkError(error.message);
-        setReady(true);
-        return;
-      }
-
-      // 4. Already-established recovery session.
-      const { data } = await supabase.auth.getSession();
-      if (!active) return;
-      setValid(!!data.session);
-      setReady(true);
-    }
-
-    void establish();
-
-    return () => {
-      active = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = z
-      .string()
-      .min(8, "Use at least 8 characters")
-      .max(128)
-      .regex(/[a-z]/, "Include a lowercase letter")
-      .regex(/[A-Z0-9]/, "Include a number or capital letter")
-      .safeParse(password);
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-    if (password !== confirm) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
-    setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (error) {
-      const msg = authErrorMessage(error);
-      toast.error(msg.title, { description: msg.description });
-      return;
-    }
-    toast.success("Password updated", { description: "You're signed in with your new password." });
-    navigate({ to: "/dashboard", replace: true });
-  }
-
-  if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+    navigate({ to: "/forgot-password", replace: true });
+  }, [navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <section className="panel w-full max-w-md p-7">
-        <div className="mb-6 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-[image:var(--gradient-brand)] text-primary-foreground">
-            <KeyRound className="size-5" />
-          </span>
-          <div>
-            <h1 className="text-lg font-semibold">Set a new password</h1>
-            <p className="text-xs text-muted-foreground">Sunland Residency portal</p>
-          </div>
-        </div>
-
-        <ResetSteps current={3} />
-
-        {!valid ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {linkError ?? "This reset link is invalid or has expired."} Request a fresh link
-              from the sign-in page.
-            </p>
-            <Button variant="hero" className="w-full" onClick={() => navigate({ to: "/" })}>
-              Back to sign in
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="rp-pass">New password</Label>
-              <Input
-                id="rp-pass"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Minimum 8 characters with a number or capital letter.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rp-confirm">Confirm password</Label>
-              <Input
-                id="rp-confirm"
-                type="password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" variant="hero" className="w-full" disabled={busy}>
-              {busy ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <ShieldCheck className="size-4" />
-              )}
-              Update password
-            </Button>
-          </form>
-        )}
-      </section>
+    <div className="flex min-h-screen items-center justify-center">
+      <Loader2 className="size-6 animate-spin text-primary" />
     </div>
   );
 }

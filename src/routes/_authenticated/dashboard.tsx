@@ -205,6 +205,8 @@ function Dashboard() {
                     <PayButton
                       amount={Number(d.amount)}
                       note={`Maintenance ${d.period ?? ""}`.trim()}
+                      context="due"
+                      referenceId={d.id}
                     />
                   )}
                 </div>
@@ -253,6 +255,8 @@ function Dashboard() {
                     <PayButton
                       amount={s.payment_amount ? Number(s.payment_amount) : null}
                       note={s.title}
+                      context="submission"
+                      referenceId={s.id}
                     />
                   )}
                 </div>
