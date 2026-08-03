@@ -205,6 +205,8 @@ function Dashboard() {
                     <PayButton
                       amount={Number(d.amount)}
                       note={`Maintenance ${d.period ?? ""}`.trim()}
+                      context="due"
+                      referenceId={d.id}
                     />
                   )}
                 </div>
