@@ -12,7 +12,7 @@ const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const ELEVATED = ["super_admin", "treasurer", "president"];
 
 async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
   return supabaseAdmin;
 }
 

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware";
 import { enforceIdleExpiry } from "@/lib/session.functions";
 
 const OWNER_EMAIL = "mickeybanerjee29@gmail.com";
@@ -9,7 +9,7 @@ const OWNER_EMAIL = "mickeybanerjee29@gmail.com";
 export const ensureAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
 
     const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(context.userId);
     const user = authUser?.user;

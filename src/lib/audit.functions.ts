@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware";
 
 export type AuditCategory = "auth" | "role" | "admin" | "system";
 
@@ -38,7 +38,7 @@ export async function writeAudit(entry: {
   details?: Record<string, string | number | boolean | null>;
   success?: boolean;
 }) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
   await supabaseAdmin.from("audit_logs").insert({
     actor_id: entry.actorId ?? null,
     actor_email: entry.actorEmail ?? null,
@@ -73,7 +73,7 @@ export const recordLoginAttempt = createServerFn({ method: "POST" })
     });
 
     if (!data.success) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
       const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
       const { count } = await supabaseAdmin
         .from("audit_logs")
@@ -138,7 +138,7 @@ export const reportIncident = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
     await supabaseAdmin.from("incident_reports").insert({
       message: data.message,
       stack: data.stack ?? null,
@@ -170,7 +170,7 @@ export const listAuditLogs = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertElevated(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
     let q = supabaseAdmin
       .from("audit_logs")
       .select("id, actor_email, action, category, target_email, details, success, created_at")
@@ -186,7 +186,7 @@ export const listIncidents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertElevated(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("incident_reports")
       .select("id, message, stack, route, severity, source, user_email, resolved, created_at")
@@ -203,7 +203,7 @@ export const resolveIncident = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertElevated(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
     const { error } = await supabaseAdmin
       .from("incident_reports")
       .update({
