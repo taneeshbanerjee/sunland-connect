@@ -13,6 +13,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { loginGate, noteLoginOutcome } from "@/lib/login-guard.functions";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Sunland Residency — Resident & Committee Portal" },
