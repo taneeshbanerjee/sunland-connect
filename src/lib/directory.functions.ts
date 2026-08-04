@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware";
 
 export type DirectoryEntry = {
   id: string;
@@ -21,7 +21,7 @@ export type DirectoryEntry = {
 export const listResidents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<DirectoryEntry[]> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
 
     const { data: roleRows } = await supabaseAdmin
       .from("user_roles")

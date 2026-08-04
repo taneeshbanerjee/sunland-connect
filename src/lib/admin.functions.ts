@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware";
 import { writeAudit } from "@/lib/audit.functions";
 import { assertStrongAuth } from "@/lib/session.functions";
 
@@ -21,7 +21,7 @@ async function myRoles(context: { supabase: any; userId: string }): Promise<stri
 }
 
 async function adminClient() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
   return supabaseAdmin;
 }
 

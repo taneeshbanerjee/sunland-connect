@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware";
 import { writeAudit } from "@/lib/audit.functions";
 
 /** Idle window before a session is force-expired, in milliseconds. */
@@ -9,7 +9,7 @@ export const SESSION_IDLE_MS = 30 * 60 * 1000;
 const EXEMPT_ROLES = ["super_admin"];
 
 async function admin() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
   return supabaseAdmin;
 }
 

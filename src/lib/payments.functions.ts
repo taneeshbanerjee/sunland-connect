@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware";
 
 /** UPI ID of the society. Never leaves the server. */
 const PAYEE_UPI = "pinksjhum@oksbi";
@@ -51,7 +51,7 @@ export const createPaymentIntent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
 
     // 1. Idempotency — return the existing intent untouched.
     const { data: existing } = await supabaseAdmin
@@ -141,7 +141,7 @@ export const markPaymentOpened = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ intentId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/app-client.server");
     await supabaseAdmin
       .from("payment_intents")
       .update({ status: "opened" })

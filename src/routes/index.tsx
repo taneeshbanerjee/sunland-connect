@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Building2, Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/app-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { loginGate, noteLoginOutcome } from "@/lib/login-guard.functions";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Sunland Residency — Resident & Committee Portal" },
