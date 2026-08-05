@@ -25,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   async function signOut() {
+    await recordAuthEvent({ data: { action: "logout" } }).catch(() => {});
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
