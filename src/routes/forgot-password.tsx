@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ResetSteps } from "@/components/ResetSteps";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { otpSendGate, otpVerifyOutcome } from "@/lib/otp-guard.functions";
 
 export const Route = createFileRoute("/forgot-password")({
   ssr: false,
