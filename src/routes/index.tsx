@@ -175,6 +175,7 @@ function AuthPage() {
       return;
     }
     void data;
+    void noteOutcome({ data: { email: parsed.data.email, success: true } }).catch(() => {});
     toast.success("Welcome to Sunland Residency");
     navigate({ to: "/dashboard", replace: true });
   }
