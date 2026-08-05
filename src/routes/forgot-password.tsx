@@ -198,6 +198,9 @@ function ForgotPasswordPage() {
       toast.error(msg.title, { description: msg.description });
       return;
     }
+    await recordAuthEvent({ data: { action: "password_changed", reason: "otp_reset" } }).catch(
+      () => {},
+    );
     // Clear every temporary auth/OTP state and send them back to a clean login.
     await supabase.auth.signOut();
     setBusy(false);
