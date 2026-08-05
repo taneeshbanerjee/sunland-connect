@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/app-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { NotificationGate } from "@/components/NotificationGate";
+import { IdleGuard } from "@/components/IdleGuard";
 import { useMe } from "@/lib/use-me";
 import { ROLE_LABEL, highestRole } from "@/lib/roles";
 
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <NotificationGate />
+      <IdleGuard />
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
           <Link to="/dashboard" className="flex items-center gap-2.5">

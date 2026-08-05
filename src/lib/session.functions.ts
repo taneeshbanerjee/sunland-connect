@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/app-auth-middleware
 import { writeAudit } from "@/lib/audit.functions";
 
 /** Idle window before a session is force-expired, in milliseconds. */
-export const SESSION_IDLE_MS = 30 * 60 * 1000;
+export const SESSION_IDLE_MS = 5 * 60 * 1000;
 
 /** Roles that are never force-expired. */
 const EXEMPT_ROLES = ["super_admin"];
