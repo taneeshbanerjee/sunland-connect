@@ -31,6 +31,9 @@ export function IdleGuard() {
     async function endSession() {
       if (endedRef.current) return;
       endedRef.current = true;
+      await recordAuthEvent({
+        data: { action: "session_timeout", reason: "idle_5_minutes" },
+      }).catch(() => {});
       await queryClient.cancelQueries();
       queryClient.clear();
       await supabase.auth.signOut();
