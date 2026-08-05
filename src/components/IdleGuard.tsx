@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/app-client";
 import { touchSession } from "@/lib/session.functions";
+import { recordAuthEvent } from "@/lib/audit.functions";
 
 /** Client-side mirror of the backend idle window. */
 const IDLE_MS = 5 * 60 * 1000;
@@ -31,6 +32,9 @@ export function IdleGuard() {
     async function endSession() {
       if (endedRef.current) return;
       endedRef.current = true;
+      await recordAuthEvent({
+        data: { action: "session_timeout", reason: "idle_5_minutes" },
+      }).catch(() => {});
       await queryClient.cancelQueries();
       queryClient.clear();
       await supabase.auth.signOut();

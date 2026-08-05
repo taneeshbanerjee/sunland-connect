@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { ResetSteps } from "@/components/ResetSteps";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { otpSendGate, otpVerifyOutcome } from "@/lib/otp-guard.functions";
+import { recordAuthEvent } from "@/lib/audit.functions";
 
 export const Route = createFileRoute("/forgot-password")({
   ssr: false,
@@ -198,6 +199,9 @@ function ForgotPasswordPage() {
       toast.error(msg.title, { description: msg.description });
       return;
     }
+    await recordAuthEvent({ data: { action: "password_changed", reason: "otp_reset" } }).catch(
+      () => {},
+    );
     // Clear every temporary auth/OTP state and send them back to a clean login.
     await supabase.auth.signOut();
     setBusy(false);

@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { NotificationGate } from "@/components/NotificationGate";
 import { IdleGuard } from "@/components/IdleGuard";
 import { useMe } from "@/lib/use-me";
+import { recordAuthEvent } from "@/lib/audit.functions";
 import { ROLE_LABEL, highestRole } from "@/lib/roles";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   async function signOut() {
+    await recordAuthEvent({ data: { action: "logout" } }).catch(() => {});
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
