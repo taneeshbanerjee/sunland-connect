@@ -123,6 +123,33 @@ export const recordLoginAttempt = createServerFn({ method: "POST" })
   });
 
 
+/**
+ * Records session lifecycle events (sign-out, password change) for the
+ * signed-in user. Called just before the local session is torn down.
+ */
+export const recordAuthEvent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        action: z.enum(["logout", "password_changed", "session_timeout"]),
+        reason: z.string().max(200).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const email = (context.claims as { email?: string } | undefined)?.email ?? null;
+    await writeAudit({
+      actorId: context.userId,
+      actorEmail: email,
+      action: data.action,
+      category: "auth",
+      success: true,
+      details: data.reason ? { reason: data.reason } : {},
+    });
+    return { ok: true };
+  });
+
 /** Records a client-side error/incident for the supreme admin console. */
 export const reportIncident = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
