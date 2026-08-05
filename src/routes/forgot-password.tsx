@@ -77,9 +77,20 @@ function ForgotPasswordPage() {
     if (timerRef.current) window.clearInterval(timerRef.current);
   }
 
-  /** Step 1 — request the 6-digit code. */
+  /** Step 1 — request the 6-digit code (server-side rate limited). */
   async function sendCode(target: string) {
     setBusy(true);
+    const gate = await otpSendGate({ data: { email: target } }).catch(() => null);
+    if (gate && !gate.allowed) {
+      setBusy(false);
+      const mins = Math.ceil(gate.retryAfterSeconds / 60);
+      toast.error("Too many code requests", {
+        description: `For security, try again in about ${mins} minute${mins === 1 ? "" : "s"}.`,
+      });
+      startCooldown(gate.retryAfterSeconds);
+      return false;
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email: target,
       options: { shouldCreateUser: false },
@@ -92,7 +103,10 @@ function ForgotPasswordPage() {
     }
     startCooldown();
     toast.success("Verification code sent", {
-      description: "Check your inbox for the 6-digit code. It expires in 60 minutes.",
+      description:
+        gate && gate.remaining <= 1
+          ? "Check your inbox. This is your last code request for this hour."
+          : "Check your inbox for the 6-digit code. It expires in 60 minutes.",
     });
     return true;
   }
@@ -129,12 +143,30 @@ function ForgotPasswordPage() {
       token: parsed.data,
       type: "email",
     });
-    setBusy(false);
     if (error || !data.session) {
+      const outcome = await otpVerifyOutcome({
+        data: { email, success: false },
+      }).catch(() => null);
+      setBusy(false);
+      if (outcome?.locked) {
+        const mins = Math.ceil(outcome.retryAfterSeconds / 60);
+        toast.error("Too many incorrect codes", {
+          description: `This reset is locked for ${mins} minutes. Try again later.`,
+        });
+        resetAll();
+        return;
+      }
       const msg = authErrorMessage(error ?? { message: "Invalid code" });
-      toast.error("Incorrect or expired code", { description: msg.description });
+      toast.error("Incorrect or expired code", {
+        description:
+          outcome && typeof outcome.remaining === "number"
+            ? `${msg.description} ${outcome.remaining} attempt${outcome.remaining === 1 ? "" : "s"} left.`
+            : msg.description,
+      });
       return;
     }
+    await otpVerifyOutcome({ data: { email, success: true } }).catch(() => {});
+    setBusy(false);
     toast.success("Code verified", { description: "Now choose your new password." });
     setStep(3);
   }
